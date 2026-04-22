@@ -68,11 +68,9 @@ Open `.env.local` and paste the three values above. Leave `NEXT_PUBLIC_SITE_URL`
 
 Migrations live in `supabase/migrations/`. They are plain SQL, designed to be pasted into the Supabase SQL editor.
 
-> The migration file will be added in the next work slice. Once it exists:
->
-> 1. Open your project's **SQL Editor** in the Supabase dashboard.
-> 2. Click **New query**, paste the full contents of `supabase/migrations/0001_init.sql`, and run it.
-> 3. Verify the `profiles` table appears under **Table editor**.
+1. Open your project's **SQL Editor** in the Supabase dashboard.
+2. Click **New query**, paste the full contents of [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql), and run it.
+3. Verify the `profiles` table appears under **Table editor**, and the `avatars` bucket appears under **Storage**.
 
 ### 6. (Optional) Enable Google OAuth
 
