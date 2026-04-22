@@ -89,9 +89,15 @@ grant execute on function public.username_available(text) to anon, authenticated
 -- ---------------------------------------------------------------------------
 -- Trigger: auto-create a profile row on new auth user.
 --
--- The placeholder username ("u_" + 14 hex chars from the user id) satisfies
--- NOT NULL + UNIQUE + the format check without needing the user to pick one
--- synchronously. Onboarding UPDATEs this row with their chosen username.
+-- The chosen username is passed through raw_user_meta_data.username during
+-- the /signup server action. If absent (e.g. Google OAuth doesn't know the
+-- user's desired username), we fall back to a collision-safe placeholder
+-- ("u_" + 14 hex chars from the user id). Onboarding will prompt OAuth
+-- users to replace that placeholder.
+--
+-- Runs inside the auth.users insert transaction — a UNIQUE violation on
+-- profiles.username (race at signup) rolls the new auth.users row back,
+-- so the server action can surface "username taken, pick another."
 -- ---------------------------------------------------------------------------
 create or replace function public.handle_new_user()
 returns trigger
@@ -103,7 +109,10 @@ begin
   insert into public.profiles (id, username, display_name)
   values (
     new.id,
-    'u_' || substr(replace(new.id::text, '-', ''), 1, 14),
+    coalesce(
+      nullif(new.raw_user_meta_data ->> 'username', ''),
+      'u_' || substr(replace(new.id::text, '-', ''), 1, 14)
+    ),
     coalesce(
       new.raw_user_meta_data ->> 'full_name',
       new.raw_user_meta_data ->> 'name',
