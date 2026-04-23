@@ -13,6 +13,8 @@ This repository is the Next.js 14 foundation. Films, the writing editor, feeds, 
 - **Next.js 14** (App Router, TypeScript, strict)
 - **Tailwind CSS** with a custom editorial theme
 - **Supabase** for Postgres, Auth, and Storage (via `@supabase/ssr`)
+- **react-hook-form** + **zod** for form validation, shared client + server
+- **framer-motion**, **@react-three/fiber** + **drei**, **lenis** for the landing page
 - **pnpm** 9, Node 20+
 - Deploys to **Vercel**
 
@@ -92,6 +94,16 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### 8. Try the flow
+
+1. Click **Start writing** on the landing page → you land on `/signup`.
+2. Pick an email, password, and a username (watch the live availability check).
+3. Supabase sends a verification email; click the link to land on `/onboarding`.
+4. Fill in display name → bio → lenses and submit — you're dropped on your profile at `/<your-username>`.
+5. Open `/settings` from the avatar menu to upload an avatar, toggle privacy, or rename yourself.
+
+If you skipped the Google OAuth step, the **Sign in with Google** button will surface a Supabase error — that's expected and means the provider isn't configured yet.
+
 ---
 
 ## Scripts
@@ -106,6 +118,23 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
+## Routes
+
+| Path                      | Access           | What it is                                                 |
+| ------------------------- | ---------------- | ---------------------------------------------------------- |
+| `/`                       | Public           | Landing page with r3f hero + lenis smooth scroll           |
+| `/design-system`          | Public           | Developer reference — tokens, type, buttons                |
+| `/signup`, `/login`       | Public           | Email/password + Google OAuth                              |
+| `/forgot-password`        | Public           | Requests a reset link (no user enumeration)                |
+| `/reset-password`         | Public           | New-password form reached from the reset email             |
+| `/auth/callback`          | Public           | Exchanges the OAuth / email-verification code for cookies  |
+| `/onboarding`             | Authenticated    | Three-step display name → bio → lenses                     |
+| `/settings`               | Authenticated    | Profile editing, privacy toggle, avatar upload             |
+| `/[username]`             | Public           | Profile page — owner / public / private shell / 404        |
+| `/api/username-available` | Public           | UX-only availability check (UNIQUE constraint is the truth) |
+
+---
+
 ## Project layout
 
 ```
@@ -117,11 +146,12 @@ src/
     design-system/         Developer-facing reference page
     api/                   Route handlers (e.g. username availability)
   components/
-    ui/                    Primitives: Button, Input, LensChip, Logo...
+    ui/                    Primitives: Button, Input, LensChip, Avatar, Logo...
     layout/                AppHeader, AvatarMenu
-    animated/              Motion and r3f scenes
+    landing/               Hero scene (r3f), Lenis smooth-scroll, landing composition
+    auth/                  Shared auth bits (e.g. GoogleButton)
   lib/
-    supabase/              Server, client, and middleware helpers
+    supabase/              Server, browser, and middleware helpers
     validation/            Zod schemas shared between client and server
     lenses.ts              Canonical lens list
     reserved-usernames.ts  Blocklist for /[username] collisions
