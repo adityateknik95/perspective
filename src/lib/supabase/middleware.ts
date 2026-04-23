@@ -6,7 +6,7 @@ import type { Database } from "@/lib/types";
 // redirected to /login?next=<originally-requested-url> so the auth flow can
 // return them afterward. /[username] is handled at the page level because
 // most profile views are public.
-const PROTECTED_PREFIXES = ["/onboarding", "/settings"];
+const PROTECTED_PREFIXES = ["/onboarding", "/settings", "/write"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
