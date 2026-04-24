@@ -7,6 +7,13 @@ import { isReservedUsername } from "@/lib/reserved-usernames";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonClassName } from "@/components/ui/button";
 import { isLens } from "@/lib/lenses";
+import {
+  PerspectiveCard,
+  type PerspectiveCardData,
+} from "@/components/perspective-card";
+import { excerpt as makeExcerpt } from "@/lib/reading";
+
+const FEED_LIMIT = 20;
 
 interface PageProps {
   params: { username: string };
@@ -20,7 +27,7 @@ export async function generateMetadata({
 }
 
 // The profile page is the union of three views:
-//   owner     — it's you. Show private badge if enabled, plus "Edit" link.
+//   owner     — it's you. Show drafts + private alongside the public feed.
 //   public    — visible profile (either public, or you are the owner).
 //   private   — exists but hidden. Instagram-style shell.
 //   not-found — username is free. Route to /signup.
@@ -39,7 +46,9 @@ export default async function ProfilePage({ params }: PageProps) {
   const [{ data: profile }, { data: userData }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, username, display_name, bio, avatar_url, signature_lenses, is_private")
+      .select(
+        "id, username, display_name, bio, avatar_url, signature_lenses, is_private",
+      )
       .eq("username", username)
       .maybeSingle(),
     supabase.auth.getUser(),
@@ -49,7 +58,15 @@ export default async function ProfilePage({ params }: PageProps) {
 
   if (profile) {
     const isOwner = viewer?.id === profile.id;
-    // Public view — or owner seeing their own profile, private or not.
+
+    // Published public feed — visible to everyone who can see this profile.
+    // Owner additionally gets drafts + private pieces, which we fetch here
+    // (RLS hides them from non-owners so these come back empty for them).
+    const [publicFeed, ownerOnly] = await Promise.all([
+      fetchPublishedFeed(supabase, profile.id),
+      isOwner ? fetchOwnerOnlyFeed(supabase, profile.id) : Promise.resolve([]),
+    ]);
+
     return (
       <ProfileView
         username={profile.username}
@@ -59,6 +76,20 @@ export default async function ProfilePage({ params }: PageProps) {
         lenses={(profile.signature_lenses ?? []).filter(isLens)}
         isPrivate={profile.is_private}
         isOwner={isOwner}
+        published={publicFeed.map((row) =>
+          toCardData(row, {
+            username: profile.username,
+            display_name: profile.display_name ?? "",
+            avatar_url: profile.avatar_url,
+          }),
+        )}
+        ownerOnly={ownerOnly.map((row) =>
+          toCardData(row, {
+            username: profile.username,
+            display_name: profile.display_name ?? "",
+            avatar_url: profile.avatar_url,
+          }),
+        )}
       />
     );
   }
@@ -76,6 +107,98 @@ export default async function ProfilePage({ params }: PageProps) {
   notFound();
 }
 
+type FeedRow = {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  body_plaintext: string | null;
+  reading_time_minutes: number | null;
+  lens_tags: string[] | null;
+  published_at: string | null;
+  updated_at: string;
+  is_draft: boolean;
+  is_private: boolean;
+  film:
+    | { tmdb_id: number; title: string; year: number | null; poster_path: string | null }
+    | { tmdb_id: number; title: string; year: number | null; poster_path: string | null }[]
+    | null;
+};
+
+async function fetchPublishedFeed(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<FeedRow[]> {
+  const { data, error } = await supabase
+    .from("perspectives")
+    .select(
+      "id, title, subtitle, body_plaintext, reading_time_minutes, lens_tags, published_at, updated_at, is_draft, is_private, film:films!inner(tmdb_id, title, year, poster_path)",
+    )
+    .eq("user_id", userId)
+    .eq("is_draft", false)
+    .eq("is_private", false)
+    .order("published_at", { ascending: false })
+    .limit(FEED_LIMIT);
+
+  if (error) {
+    console.error("profile public feed failed:", error);
+    return [];
+  }
+  return (data ?? []) as FeedRow[];
+}
+
+async function fetchOwnerOnlyFeed(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<FeedRow[]> {
+  // Drafts and private-but-published pieces. Ordered by updated_at so a
+  // half-edited draft floats to the top, which is what the author wants
+  // when they come back.
+  const { data, error } = await supabase
+    .from("perspectives")
+    .select(
+      "id, title, subtitle, body_plaintext, reading_time_minutes, lens_tags, published_at, updated_at, is_draft, is_private, film:films!inner(tmdb_id, title, year, poster_path)",
+    )
+    .eq("user_id", userId)
+    .or("is_draft.eq.true,is_private.eq.true")
+    .order("updated_at", { ascending: false })
+    .limit(FEED_LIMIT);
+
+  if (error) {
+    console.error("profile owner-only feed failed:", error);
+    return [];
+  }
+  return (data ?? []) as FeedRow[];
+}
+
+function toCardData(
+  row: FeedRow,
+  author: { username: string; display_name: string; avatar_url: string | null },
+): PerspectiveCardData {
+  const film = Array.isArray(row.film) ? row.film[0] : row.film;
+  return {
+    id: row.id,
+    title: row.title || "Untitled",
+    subtitle: row.subtitle,
+    excerpt: makeExcerpt(row.body_plaintext ?? "", 32),
+    readingTimeMinutes: row.reading_time_minutes ?? 0,
+    lensTags: (row.lens_tags ?? []).filter(isLens),
+    publishedAt: row.published_at,
+    author: {
+      username: author.username,
+      displayName: author.display_name,
+      avatarUrl: author.avatar_url,
+    },
+    film: film
+      ? {
+          tmdbId: film.tmdb_id,
+          title: film.title,
+          year: film.year,
+          posterPath: film.poster_path,
+        }
+      : undefined,
+  };
+}
+
 function ProfileView({
   username,
   displayName,
@@ -84,6 +207,8 @@ function ProfileView({
   lenses,
   isPrivate,
   isOwner,
+  published,
+  ownerOnly,
 }: {
   username: string;
   displayName: string;
@@ -92,6 +217,8 @@ function ProfileView({
   lenses: string[];
   isPrivate: boolean;
   isOwner: boolean;
+  published: PerspectiveCardData[];
+  ownerOnly: PerspectiveCardData[];
 }) {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
@@ -122,7 +249,13 @@ function ProfileView({
             </p>
           )}
           {isOwner && (
-            <div className="mt-6">
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                href="/write/new"
+                className={buttonClassName("primary", "sm")}
+              >
+                Write
+              </Link>
               <Link
                 href="/settings"
                 className={buttonClassName("secondary", "sm")}
@@ -152,16 +285,72 @@ function ProfileView({
         </section>
       )}
 
-      <section className="mt-12 border-t border-rule pt-10">
-        <p className="font-mono text-meta-sm uppercase text-ink-muted">
-          Journals
-        </p>
-        <p className="mt-4 font-body text-reading text-ink-soft">
-          {isOwner
-            ? "You haven't written anything yet. That's the next slice."
-            : "Nothing published yet."}
-        </p>
+      <section className="mt-14 border-t border-rule pt-10">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 className="font-display text-display-sm text-ink">
+            Journals<span className="italic">.</span>
+          </h2>
+          {published.length > 0 && (
+            <p className="font-mono text-meta-sm uppercase text-ink-muted">
+              {published.length} published
+            </p>
+          )}
+        </div>
+
+        {published.length === 0 ? (
+          <p className="mt-6 font-body text-reading text-ink-soft">
+            {isOwner
+              ? "You haven't published anything yet. Pick a film to start."
+              : "Nothing published yet."}
+          </p>
+        ) : (
+          <div className="mt-6">
+            {published.map((card) => (
+              <PerspectiveCard key={card.id} perspective={card} showFilm />
+            ))}
+          </div>
+        )}
       </section>
+
+      {isOwner && ownerOnly.length > 0 && (
+        <section className="mt-14 border-t border-rule pt-10">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="font-display text-display-sm text-ink">
+              Only visible to you<span className="italic">.</span>
+            </h2>
+            <p className="font-mono text-meta-sm uppercase text-ink-muted">
+              Drafts &amp; private
+            </p>
+          </div>
+          <p className="mt-2 max-w-prose font-body text-reading-sm text-ink-soft">
+            Pieces in progress, plus anything you&apos;ve published as private.
+            Readers don&apos;t see this section.
+          </p>
+          <div className="mt-6">
+            {ownerOnly.map((card) => (
+              <OwnerOnlyCard key={card.id} card={card} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+// Tiny wrapper around PerspectiveCard so draft/private rows get a status
+// badge. We don't want to clutter the shared card component with states
+// that only appear on one page.
+function OwnerOnlyCard({ card }: { card: PerspectiveCardData }) {
+  // The feed row has the is_draft/is_private flags; we smuggle them in via
+  // publishedAt === null (draft) or via publishedAt set (private-published).
+  const label = card.publishedAt ? "Private" : "Draft";
+
+  return (
+    <div className="relative">
+      <span className="absolute -left-1 top-9 -translate-x-full border border-rule bg-cream px-2 py-1 font-mono text-meta-sm uppercase text-ink-muted">
+        {label}
+      </span>
+      <PerspectiveCard perspective={card} showFilm />
     </div>
   );
 }

@@ -135,7 +135,26 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        // Foreign keys matter for PostgREST's embed syntax: `film:films!inner`
+        // and `profiles!inner` fail type inference unless the relationship is
+        // declared. These must match the actual FK names in the 0002
+        // migration — see perspectives_film_id_fkey, perspectives_user_id_fkey.
+        Relationships: [
+          {
+            foreignKeyName: "perspectives_film_id_fkey";
+            columns: ["film_id"];
+            isOneToOne: false;
+            referencedRelation: "films";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "perspectives_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: Record<string, never>;
