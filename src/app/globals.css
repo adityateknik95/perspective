@@ -28,3 +28,88 @@
     text-wrap: pretty;
   }
 }
+
+/*
+ * prose-like — the typographic baseline for user-authored prose. Applied by
+ * both the Tiptap editor (while writing) and the read view (after publish),
+ * so a paragraph looks the same in the two places. We roll our own instead
+ * of pulling in @tailwindcss/typography because we need full control over
+ * the editorial voice (italic first sentence, H2 weight, blockquote rule).
+ */
+@layer components {
+  .prose-like {
+    @apply font-body text-reading text-ink;
+  }
+  .prose-like > * + * {
+    margin-top: 1.25em;
+  }
+  .prose-like p {
+    @apply leading-[1.75];
+  }
+  .prose-like h2 {
+    @apply font-display text-display-sm text-ink;
+    margin-top: 2em;
+    margin-bottom: 0.5em;
+    letter-spacing: -0.015em;
+  }
+  .prose-like h3 {
+    @apply font-display text-[1.375rem] leading-snug text-ink;
+    margin-top: 1.75em;
+    margin-bottom: 0.4em;
+  }
+  .prose-like strong {
+    @apply text-ink;
+    font-weight: 600;
+  }
+  .prose-like em {
+    font-style: italic;
+  }
+  .prose-like u {
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  .prose-like a {
+    @apply text-wine underline-offset-4;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+  }
+  .prose-like a:hover {
+    @apply text-wine-deep;
+  }
+  .prose-like blockquote {
+    @apply font-body italic text-ink-soft;
+    border-left: 2px solid theme("colors.rule");
+    padding-left: 1.25rem;
+    margin-left: 0;
+  }
+  .prose-like ul,
+  .prose-like ol {
+    padding-left: 1.5rem;
+  }
+  .prose-like ul {
+    list-style: disc;
+  }
+  .prose-like ol {
+    list-style: decimal;
+  }
+  .prose-like li + li {
+    margin-top: 0.4em;
+  }
+  .prose-like hr {
+    @apply border-rule;
+    border-top-width: 1px;
+    margin-top: 2em;
+    margin-bottom: 2em;
+  }
+
+  /* Tiptap's placeholder extension writes the empty-node placeholder into a
+   * ::before pseudo-element via data-placeholder. Show it dimly so it reads
+   * like prompt text, not content. */
+  .prose-like p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    color: theme("colors.ink.muted");
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+}
