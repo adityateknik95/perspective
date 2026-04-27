@@ -84,8 +84,10 @@ create table if not exists public.perspectives (
   id                    uuid        primary key default gen_random_uuid(),
   user_id               uuid        not null references public.profiles(id) on delete cascade,
   film_id               uuid        not null references public.films(id)    on delete restrict,
-  title                 text        not null
-                                    check (char_length(title) between 1 and 120),
+  -- Drafts start empty; the publish_shape check below enforces 1-120 at publish
+  -- time. Column-level check only caps the upper bound.
+  title                 text        not null default ''
+                                    check (char_length(title) <= 120),
   subtitle              text
                                     check (subtitle is null or char_length(subtitle) between 1 and 200),
   body                  text        not null default '',
@@ -107,12 +109,14 @@ create table if not exists public.perspectives (
   created_at            timestamptz not null default now(),
   updated_at            timestamptz not null default now(),
 
-  -- Publish rule: once published, 1-3 lenses required and published_at set.
+  -- Publish rule: once published, a title (1-120), 1-3 lenses, and a
+  -- published_at are required. Drafts are free-form.
   constraint perspectives_publish_shape
     check (
       is_draft
       or (
         published_at is not null
+        and char_length(title) between 1 and 120
         and cardinality(lens_tags) between 1 and 3
       )
     )
