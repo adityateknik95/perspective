@@ -18,7 +18,11 @@ export function HeroScene() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 -z-10 opacity-90"
+      // Lower opacity + constrain to the right half so the frames sit behind
+      // the negative space next to the headline rather than slicing through
+      // it. On narrow viewports the mask collapses to full-width so the
+      // composition still reads.
+      className="pointer-events-none absolute inset-y-0 -z-10 right-0 w-full opacity-50 [mask-image:linear-gradient(to_right,transparent,black_30%,black)] md:left-1/3 md:w-2/3 md:opacity-60"
     >
       <Canvas
         dpr={[1, 1.5]}
@@ -45,12 +49,16 @@ function Frames() {
   const frames = useMemo<
     Array<{ position: Vec3; rotation: Vec3; color: string; scale: number }>
   >(
+    // Repositioned to sit in the right half of the canvas (the canvas is
+    // already masked to that side). The wine card moved deepest + smallest
+    // so it stops competing with the headline; cream/rule cards drift in
+    // front. Keep five — the negative space between them is the point.
     () => [
-      { position: [-2.4, 0.6, 0], rotation: [0.1, 0.4, 0], color: "#E8DFCC", scale: 1.2 },
-      { position: [1.8, -0.3, -1], rotation: [-0.05, -0.3, 0.1], color: "#C9BEA8", scale: 1.4 },
-      { position: [0.3, 1.2, -2], rotation: [0.2, 0.1, -0.08], color: "#6B1F2B", scale: 0.9 },
-      { position: [-0.8, -1.3, -0.5], rotation: [-0.15, 0.2, 0.05], color: "#F2EBDD", scale: 1.05 },
-      { position: [2.6, 1.1, -1.5], rotation: [0.05, -0.5, -0.12], color: "#E8DFCC", scale: 0.75 },
+      { position: [0.4, 0.8, -0.2], rotation: [0.1, 0.4, 0], color: "#E8DFCC", scale: 1.15 },
+      { position: [2.8, -0.4, -1], rotation: [-0.05, -0.3, 0.1], color: "#C9BEA8", scale: 1.3 },
+      { position: [2.0, 1.6, -3.2], rotation: [0.2, 0.1, -0.08], color: "#6B1F2B", scale: 0.7 },
+      { position: [1.2, -1.4, -0.5], rotation: [-0.15, 0.2, 0.05], color: "#F2EBDD", scale: 1.0 },
+      { position: [3.4, 1.0, -2.1], rotation: [0.05, -0.5, -0.12], color: "#E8DFCC", scale: 0.8 },
     ],
     [],
   );

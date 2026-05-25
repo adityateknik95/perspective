@@ -446,6 +446,21 @@ export interface Database {
           total: number;
         };
       };
+      get_perspective_reaction_summaries: {
+        Args: { p_ids: string[] };
+        // Same shape as the single-id RPC plus the keying perspective_id.
+        // Zero-filled for ids with no reactions, so the caller can index
+        // by id without nullability handling.
+        Returns: Array<{
+          perspective_id: string;
+          moved: number;
+          changed_my_mind: number;
+          recognized_myself: number;
+          saw_it_differently: number;
+          stayed_with_me: number;
+          total: number;
+        }>;
+      };
       get_feed_for_user: {
         Args: {
           p_user_id: string;

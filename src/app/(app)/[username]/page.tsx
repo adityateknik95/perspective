@@ -11,7 +11,15 @@ import {
   PerspectiveCard,
   type PerspectiveCardData,
 } from "@/components/perspective-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FollowButton } from "@/components/follows/follow-button";
 import { excerpt as makeExcerpt } from "@/lib/reading";
+import {
+  getFollowCounts,
+  getReactionSummariesFor,
+  isFollowing,
+} from "@/lib/social/queries";
+import type { ReactionSummary } from "@/lib/social/reactions";
 
 const FEED_LIMIT = 20;
 
@@ -59,13 +67,30 @@ export default async function ProfilePage({ params }: PageProps) {
   if (profile) {
     const isOwner = viewer?.id === profile.id;
 
-    // Published public feed — visible to everyone who can see this profile.
-    // Owner additionally gets drafts + private pieces, which we fetch here
-    // (RLS hides them from non-owners so these come back empty for them).
-    const [publicFeed, ownerOnly] = await Promise.all([
-      fetchPublishedFeed(supabase, profile.id),
-      isOwner ? fetchOwnerOnlyFeed(supabase, profile.id) : Promise.resolve([]),
-    ]);
+    // Everything below is independent — fan out and gather.
+    const [publicFeed, ownerOnly, followCounts, viewerFollows] =
+      await Promise.all([
+        fetchPublishedFeed(supabase, profile.id),
+        isOwner
+          ? fetchOwnerOnlyFeed(supabase, profile.id)
+          : Promise.resolve([]),
+        getFollowCounts(profile.id, supabase),
+        // isFollowing short-circuits to false for owner/anon — cheap.
+        viewer && !isOwner
+          ? isFollowing(viewer.id, profile.id, supabase)
+          : Promise.resolve(false),
+      ]);
+
+    // Batch-load reaction summaries for the public feed (drafts/private rows
+    // can't have public reactions, so we skip them). One round-trip beats N.
+    const publicIds = publicFeed.map((r) => r.id);
+    const summaries = await getReactionSummariesFor(publicIds, supabase);
+
+    const authorPayload = {
+      username: profile.username,
+      display_name: profile.display_name ?? "",
+      avatar_url: profile.avatar_url,
+    };
 
     return (
       <ProfileView
@@ -76,20 +101,14 @@ export default async function ProfilePage({ params }: PageProps) {
         lenses={(profile.signature_lenses ?? []).filter(isLens)}
         isPrivate={profile.is_private}
         isOwner={isOwner}
+        isSignedIn={!!viewer}
+        viewerFollows={viewerFollows}
+        followerCount={followCounts.followers}
+        followingCount={followCounts.following}
         published={publicFeed.map((row) =>
-          toCardData(row, {
-            username: profile.username,
-            display_name: profile.display_name ?? "",
-            avatar_url: profile.avatar_url,
-          }),
+          toCardData(row, authorPayload, summaries.get(row.id)),
         )}
-        ownerOnly={ownerOnly.map((row) =>
-          toCardData(row, {
-            username: profile.username,
-            display_name: profile.display_name ?? "",
-            avatar_url: profile.avatar_url,
-          }),
-        )}
+        ownerOnly={ownerOnly.map((row) => toCardData(row, authorPayload))}
       />
     );
   }
@@ -173,6 +192,7 @@ async function fetchOwnerOnlyFeed(
 function toCardData(
   row: FeedRow,
   author: { username: string; display_name: string; avatar_url: string | null },
+  reactionSummary?: ReactionSummary,
 ): PerspectiveCardData {
   const film = Array.isArray(row.film) ? row.film[0] : row.film;
   return {
@@ -196,6 +216,7 @@ function toCardData(
           posterPath: film.poster_path,
         }
       : undefined,
+    reactionSummary,
   };
 }
 
@@ -207,6 +228,10 @@ function ProfileView({
   lenses,
   isPrivate,
   isOwner,
+  isSignedIn,
+  viewerFollows,
+  followerCount,
+  followingCount,
   published,
   ownerOnly,
 }: {
@@ -217,9 +242,14 @@ function ProfileView({
   lenses: string[];
   isPrivate: boolean;
   isOwner: boolean;
+  isSignedIn: boolean;
+  viewerFollows: boolean;
+  followerCount: number;
+  followingCount: number;
   published: PerspectiveCardData[];
   ownerOnly: PerspectiveCardData[];
 }) {
+  const signInHref = `/login?next=${encodeURIComponent(`/${username}`)}`;
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
       <div className="flex flex-col items-start gap-8 sm:flex-row sm:items-center">
@@ -243,27 +273,54 @@ function ProfileView({
           <p className="mt-1 font-mono text-meta-sm uppercase text-ink-muted">
             @{username}
           </p>
+
+          {/* Follower / following counts. Public for everyone — RLS allows
+              select-all on follows, so we can render these to any viewer. */}
+          <dl className="mt-4 flex gap-6 font-mono text-meta-sm uppercase text-ink-muted">
+            <div className="flex items-baseline gap-1.5">
+              <dd className="font-display text-reading text-ink">
+                {followerCount.toLocaleString()}
+              </dd>
+              <dt>{followerCount === 1 ? "follower" : "followers"}</dt>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <dd className="font-display text-reading text-ink">
+                {followingCount.toLocaleString()}
+              </dd>
+              <dt>following</dt>
+            </div>
+          </dl>
+
           {bio && (
             <p className="mt-5 max-w-prose font-body text-reading text-ink-soft">
               {bio}
             </p>
           )}
-          {isOwner && (
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/write/new"
-                className={buttonClassName("primary", "sm")}
-              >
-                Write
-              </Link>
-              <Link
-                href="/settings"
-                className={buttonClassName("secondary", "sm")}
-              >
-                Edit profile
-              </Link>
-            </div>
-          )}
+          <div className="mt-6 flex flex-wrap gap-3">
+            {isOwner ? (
+              <>
+                <Link
+                  href="/write/new"
+                  className={buttonClassName("primary", "sm")}
+                >
+                  Write
+                </Link>
+                <Link
+                  href="/settings"
+                  className={buttonClassName("secondary", "sm")}
+                >
+                  Edit profile
+                </Link>
+              </>
+            ) : (
+              <FollowButton
+                username={username}
+                initialFollowing={viewerFollows}
+                isSignedIn={isSignedIn}
+                signInHref={signInHref}
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -298,11 +355,25 @@ function ProfileView({
         </div>
 
         {published.length === 0 ? (
-          <p className="mt-6 font-body text-reading text-ink-soft">
-            {isOwner
-              ? "You haven't published anything yet. Pick a film to start."
-              : "Nothing published yet."}
-          </p>
+          <EmptyState
+            className="mt-6"
+            title={isOwner ? "Nothing here yet." : "No perspectives yet."}
+            body={
+              isOwner
+                ? "Pick a film, write a perspective, hit publish. Your writing lives here."
+                : `Once @${username} publishes something, it'll appear here.`
+            }
+            action={
+              isOwner ? (
+                <Link
+                  href="/write/new"
+                  className={buttonClassName("primary", "sm")}
+                >
+                  Write your first
+                </Link>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="mt-6">
             {published.map((card) => (

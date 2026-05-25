@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { FilmPoster } from "@/components/film-poster";
 import { Avatar } from "@/components/ui/avatar";
+import { ReactionSummaryBadge } from "@/components/reactions/reaction-summary";
+import type { ReactionSummary } from "@/lib/social/reactions";
 import { cn } from "@/lib/cn";
 
 export interface PerspectiveCardData {
@@ -24,6 +26,9 @@ export interface PerspectiveCardData {
     year: number | null;
     posterPath: string | null;
   };
+  // Optional — list views that have already batched the summary lookup
+  // pass it in. Cards without one just don't render the badge.
+  reactionSummary?: ReactionSummary;
 }
 
 interface PerspectiveCardProps {
@@ -40,8 +45,18 @@ export function PerspectiveCard({
   showFilm = true,
   className,
 }: PerspectiveCardProps) {
-  const { id, title, subtitle, excerpt, readingTimeMinutes, lensTags, publishedAt, author, film } =
-    perspective;
+  const {
+    id,
+    title,
+    subtitle,
+    excerpt,
+    readingTimeMinutes,
+    lensTags,
+    publishedAt,
+    author,
+    film,
+    reactionSummary,
+  } = perspective;
 
   return (
     <article className={cn("border-b border-rule py-8 last:border-b-0", className)}>
@@ -81,6 +96,12 @@ export function PerspectiveCard({
             </time>
             <span aria-hidden>&middot;</span>
             <span>{readingTimeMinutes} min</span>
+            {reactionSummary && reactionSummary.total > 0 && (
+              <>
+                <span aria-hidden>&middot;</span>
+                <ReactionSummaryBadge summary={reactionSummary} />
+              </>
+            )}
           </div>
 
           <h2 className="mt-3 font-display text-display-sm text-ink">

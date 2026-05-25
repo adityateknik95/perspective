@@ -57,9 +57,10 @@ export async function getViewerReaction(
 }
 
 // Bulk reaction summaries for a list of perspectives — used on feed / film
-// pages to avoid N round-trips. PostgREST aggregations don't compose well
-// in a single call, so we batch with `in()` and group client-side. Cheap
-// enough for ~20 rows per page.
+// pages to avoid N round-trips. Backed by the
+// get_perspective_reaction_summaries(uuid[]) RPC so aggregation stays in
+// Postgres; the previous row-scan + JS aggregation was fine at 20 rows but
+// would scale linearly with reactions, not page size.
 export async function getReactionSummariesFor(
   perspectiveIds: string[],
   supabase: Supa = createClient(),
@@ -67,25 +68,28 @@ export async function getReactionSummariesFor(
   const map = new Map<string, ReactionSummary>();
   if (perspectiveIds.length === 0) return map;
 
-  const { data, error } = await supabase
-    .from("reactions")
-    .select("perspective_id, reaction_type")
-    .in("perspective_id", perspectiveIds);
+  const { data, error } = await supabase.rpc(
+    "get_perspective_reaction_summaries",
+    { p_ids: perspectiveIds },
+  );
   if (error) {
     console.error("getReactionSummariesFor failed:", error);
+    // Fall back to empty summaries — callers treat missing keys as zero,
+    // so the worst case is a temporarily badge-less feed, not a crash.
+    for (const id of perspectiveIds) {
+      map.set(id, { ...EMPTY_REACTION_SUMMARY });
+    }
     return map;
   }
 
-  for (const id of perspectiveIds) {
-    map.set(id, { ...EMPTY_REACTION_SUMMARY });
-  }
   for (const row of data ?? []) {
-    const summary = map.get(row.perspective_id);
-    if (!summary) continue;
-    if (isReactionType(row.reaction_type)) {
-      summary[row.reaction_type] += 1;
-      summary.total += 1;
-    }
+    const { perspective_id, ...summary } = row;
+    map.set(perspective_id, summary);
+  }
+  // Defensive: if the RPC omitted any id (shouldn't, but supabase types
+  // don't enforce it), zero-fill so Map.get returns a populated shape.
+  for (const id of perspectiveIds) {
+    if (!map.has(id)) map.set(id, { ...EMPTY_REACTION_SUMMARY });
   }
   return map;
 }

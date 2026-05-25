@@ -77,6 +77,32 @@ export const EMPTY_REACTION_SUMMARY: ReactionSummary = {
   total: 0,
 };
 
+// Apply a viewer-reaction change to a summary, returning the would-be next
+// summary. Used to drive optimistic UI in the picker — the moment the user
+// clicks, counts move without waiting on the server.
+//
+// Conservative: counts can never go below 0. If we somehow get out of sync
+// (RLS rejected our optimistic write, network blip) the next render with
+// the server-known value reconciles.
+export function applyOptimisticReaction(
+  summary: ReactionSummary,
+  prev: ReactionType | null,
+  next: ReactionType | null,
+): ReactionSummary {
+  const out: ReactionSummary = { ...summary };
+  if (prev === next) return out;
+
+  if (prev) {
+    out[prev] = Math.max(0, out[prev] - 1);
+    out.total = Math.max(0, out.total - 1);
+  }
+  if (next) {
+    out[next] = out[next] + 1;
+    out.total = out.total + 1;
+  }
+  return out;
+}
+
 // Pick the "dominant" reaction for compact list-view badges.
 // Tiebreaker is canonical order — REACTION_TYPES[0] beats REACTION_TYPES[1]
 // at equal counts. Returns null if there are no reactions.

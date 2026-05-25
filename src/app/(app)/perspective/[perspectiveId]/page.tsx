@@ -9,6 +9,11 @@ import { excerpt as makeExcerpt } from "@/lib/reading";
 import { posterUrl } from "@/lib/tmdb/urls";
 import { cn } from "@/lib/cn";
 import { OwnerActions } from "./owner-actions";
+import {
+  getReactionSummary,
+  getViewerReaction,
+} from "@/lib/social/queries";
+import { ReactionPicker } from "@/components/reactions/reaction-picker";
 
 // UUIDs are 36 chars with 4 hyphens. Cheap reject for random garbage in the
 // URL — saves a DB round-trip and a misleading 404.
@@ -110,21 +115,39 @@ export default async function PerspectivePage({ params }: PageProps) {
   const p = await loadPerspective(params.perspectiveId);
   if (!p) notFound();
 
-  // Previous perspective by the same author — powers the "Next" footer link.
-  // Ordered by published_at desc, so "previous" here means "older piece".
   const supabase = createClient();
-  const { data: older } = await supabase
-    .from("perspectives")
-    .select("id, title, film:films!inner(title)")
-    .eq("user_id", p.userId)
-    .eq("is_draft", false)
-    .eq("is_private", false)
-    .lt("published_at", p.publishedAt ?? new Date().toISOString())
-    .order("published_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const viewerId = user?.id ?? null;
 
+  // Reactions data + previous perspective lookup run in parallel — they're
+  // independent and both feed the rendered shell.
+  const [reactionSummary, viewerReaction, olderResult] = await Promise.all([
+    getReactionSummary(p.id, supabase),
+    getViewerReaction(p.id, viewerId, supabase),
+    // Previous perspective by the same author — powers the "Next" footer link.
+    // Ordered by published_at desc, so "previous" here means "older piece".
+    supabase
+      .from("perspectives")
+      .select("id, title, film:films!inner(title)")
+      .eq("user_id", p.userId)
+      .eq("is_draft", false)
+      .eq("is_private", false)
+      .lt("published_at", p.publishedAt ?? new Date().toISOString())
+      .order("published_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const older = olderResult.data;
   const olderFilm = older && (Array.isArray(older.film) ? older.film[0] : older.film);
+
+  // Drafts and private pieces don't take public reactions. Authors can still
+  // self-react on their own private/published pieces — useful for testing
+  // the picker, harmless otherwise. The picker is hidden on drafts entirely.
+  const showReactionPicker = !p.isDraft && (!p.isPrivate || p.isOwner);
+  const signInHref = `/login?next=${encodeURIComponent(`/perspective/${p.id}`)}`;
 
   return (
     <article className="mx-auto max-w-reading px-6 py-12">
@@ -226,6 +249,19 @@ export default async function PerspectivePage({ params }: PageProps) {
         )}
         dangerouslySetInnerHTML={{ __html: p.body }}
       />
+
+      {/* Reactions */}
+      {showReactionPicker && (
+        <div className="mt-14">
+          <ReactionPicker
+            perspectiveId={p.id}
+            initialViewerReaction={viewerReaction}
+            initialSummary={reactionSummary}
+            isSignedIn={!!viewerId}
+            signInHref={signInHref}
+          />
+        </div>
+      )}
 
       {/* Lens tags */}
       {p.lensTags.length > 0 && (

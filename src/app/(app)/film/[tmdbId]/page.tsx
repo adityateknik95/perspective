@@ -6,9 +6,11 @@ import { getOrCreateFilmByTmdbId } from "@/lib/films";
 import { FilmPoster } from "@/components/film-poster";
 import { PerspectiveCard, type PerspectiveCardData } from "@/components/perspective-card";
 import { buttonClassName } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { yearInWords } from "@/lib/year-in-words";
 import { excerpt as makeExcerpt } from "@/lib/reading";
 import { isLens, LENSES, type Lens } from "@/lib/lenses";
+import { getReactionSummariesFor } from "@/lib/social/queries";
 import { cn } from "@/lib/cn";
 
 interface PageProps {
@@ -104,6 +106,12 @@ export default async function FilmPage({ params, searchParams }: PageProps) {
   const pageRows = hasMore ? fetched.slice(0, PAGE_SIZE) : fetched;
   const nextCursor = hasMore ? pageRows[pageRows.length - 1]?.published_at : null;
 
+  // Batch reaction summaries for the visible page in one round-trip.
+  const reactionSummaries = await getReactionSummariesFor(
+    pageRows.map((r) => r.id),
+    supabase,
+  );
+
   const cards: PerspectiveCardData[] = pageRows.map((row) => {
     // Supabase types the joined relation as an array or object depending on
     // the relationship shape. We selected profiles!inner, which gives us the
@@ -122,6 +130,7 @@ export default async function FilmPage({ params, searchParams }: PageProps) {
         displayName: profile?.display_name ?? "",
         avatarUrl: profile?.avatar_url ?? null,
       },
+      reactionSummary: reactionSummaries.get(row.id),
     };
   });
 
@@ -261,11 +270,32 @@ export default async function FilmPage({ params, searchParams }: PageProps) {
 
         <div className="mt-6">
           {cards.length === 0 ? (
-            <p className="py-10 font-body text-reading text-ink-soft">
-              {activeLens
-                ? `No perspectives on this film through the ${activeLens} lens yet.`
-                : "No perspectives yet. The first one here sets the tone."}
-            </p>
+            <EmptyState
+              title={
+                activeLens
+                  ? `Nothing through the ${activeLens} lens yet.`
+                  : "No perspectives yet."
+              }
+              body={
+                activeLens
+                  ? `Try "All" to see how other writers have read ${film.title}.`
+                  : `The first piece on ${film.title} sets the tone for everyone after.`
+              }
+              action={
+                activeLens ? (
+                  <Link
+                    href={`/film/${film.tmdb_id}`}
+                    className={buttonClassName("secondary", "sm")}
+                  >
+                    See all lenses
+                  </Link>
+                ) : (
+                  <Link href={writeHref} className={buttonClassName("primary", "sm")}>
+                    Write the first
+                  </Link>
+                )
+              }
+            />
           ) : (
             cards.map((c) => (
               <PerspectiveCard key={c.id} perspective={c} showFilm={false} />
