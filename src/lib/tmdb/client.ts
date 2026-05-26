@@ -14,6 +14,9 @@ import type {
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const FILM_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7; // 1 week — film data barely changes
 const SEARCH_CACHE_TTL_SECONDS = 60 * 60; // 1 hour for searches
+// Discovery endpoints (now playing, trending, anniversaries) shift slowly —
+// daily refresh is plenty and keeps us well under TMDB's rate limits.
+const DISCOVERY_CACHE_TTL_SECONDS = 60 * 60 * 24; // 1 day
 
 function getToken(): string {
   const token = process.env.TMDB_ACCESS_TOKEN;
@@ -98,6 +101,95 @@ export async function searchFilms(query: string): Promise<FilmSummary[]> {
     posterPath: r.poster_path,
     originalLanguage: r.original_language,
   }));
+}
+
+// What's in theatres right now. TMDB's now_playing window is roughly the
+// past 4-6 weeks of US theatrical releases; good enough for "available to
+// write about" framing.
+export async function getNowPlaying(): Promise<FilmSummary[]> {
+  const data = await tmdbFetch<TmdbSearchResponse>(
+    "/movie/now_playing",
+    { language: "en-US", page: 1, region: "US" },
+    DISCOVERY_CACHE_TTL_SECONDS,
+  );
+  return data.results.slice(0, 12).map(mapSearchResult);
+}
+
+// Most-talked-about films of the past week according to TMDB. We use this
+// as a soft "trending" signal — Perspective's own "trending" (most-written-
+// about on the platform) lives elsewhere, this is the broader cultural
+// pulse.
+export async function getTrendingThisWeek(): Promise<FilmSummary[]> {
+  const data = await tmdbFetch<TmdbSearchResponse>(
+    "/trending/movie/week",
+    { language: "en-US" },
+    DISCOVERY_CACHE_TTL_SECONDS,
+  );
+  return data.results.slice(0, 12).map(mapSearchResult);
+}
+
+// Films released exactly N years ago this week, in lieu of true re-releases
+// (which TMDB doesn't expose cleanly). Pass several yearsAgo values and we
+// return one bucket per year — the home page renders them as "20 years ago,"
+// "30 years ago," etc.
+//
+// We use /discover/movie with a primary_release_date window of ±3 days
+// around today's date, scoped to the target year. Tightens the result to
+// genuine anniversaries instead of "any film from May 1995."
+export async function getAnniversariesThisWeek(
+  yearsAgo: number[],
+): Promise<Array<{ yearsAgo: number; films: FilmSummary[] }>> {
+  const now = new Date();
+  const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(now.getUTCDate()).padStart(2, "0");
+  const thisYear = now.getUTCFullYear();
+
+  // ±3 days around today's date. Wider window would catch too many films
+  // unrelated to "this week."
+  const dayMs = 24 * 60 * 60 * 1000;
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+  const results = await Promise.all(
+    yearsAgo.map(async (n) => {
+      const targetYear = thisYear - n;
+      const center = new Date(`${targetYear}-${mm}-${dd}T00:00:00Z`);
+      const start = fmt(new Date(center.getTime() - 3 * dayMs));
+      const end = fmt(new Date(center.getTime() + 3 * dayMs));
+
+      const data = await tmdbFetch<TmdbSearchResponse>(
+        "/discover/movie",
+        {
+          "primary_release_date.gte": start,
+          "primary_release_date.lte": end,
+          sort_by: "popularity.desc",
+          // Bias toward films people might have heard of — anything below
+          // this is usually shorts, festival entries, or untranslated
+          // metadata.
+          "vote_count.gte": 50,
+          language: "en-US",
+          include_adult: "false",
+        },
+        DISCOVERY_CACHE_TTL_SECONDS,
+      );
+      return {
+        yearsAgo: n,
+        films: data.results.slice(0, 4).map(mapSearchResult),
+      };
+    }),
+  );
+
+  return results;
+}
+
+function mapSearchResult(r: TmdbSearchResponse["results"][number]): FilmSummary {
+  return {
+    tmdbId: r.id,
+    title: r.title,
+    year: parseYear(r.release_date),
+    director: null,
+    posterPath: r.poster_path,
+    originalLanguage: r.original_language,
+  };
 }
 
 export async function getFilm(tmdbId: number): Promise<FilmDetail> {

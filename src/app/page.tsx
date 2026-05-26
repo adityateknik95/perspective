@@ -10,8 +10,10 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  // If you're signed in, the landing page isn't for you — jump to your
-  // profile (or onboarding if you haven't finished it yet).
+  // If you're signed in, the marketing landing isn't for you — jump to the
+  // logged-in home (or onboarding if you haven't finished it yet). The
+  // home page does its own onboarding check too; keep this redirect so
+  // signed-in users never see the marketing page on the bare domain.
   const supabase = createClient();
   const {
     data: { user },
@@ -20,7 +22,7 @@ export default async function Home() {
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("username, display_name, signature_lenses")
+      .select("display_name, signature_lenses")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -29,7 +31,7 @@ export default async function Home() {
       !!profile.display_name &&
       (profile.signature_lenses ?? []).length > 0;
 
-    redirect(onboarded && profile ? `/${profile.username}` : "/onboarding");
+    redirect(onboarded ? "/home" : "/onboarding");
   }
 
   return <LandingPage />;
