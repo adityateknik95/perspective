@@ -5,6 +5,44 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Float } from "@react-three/drei";
 import type { Group, Mesh } from "three";
 
+// Theme-aware palette for the r3f scene. Three.js doesn't see CSS variables,
+// so we maintain a parallel hex set per theme and re-render the scene when
+// the data-theme attribute on <html> flips.
+//
+// In light: cream + rule frames with one wine accent — the published mood.
+// In dark: deeper cream-deep / rule shades + a lifted rose-wine, so the
+// frames still read as film-frames behind a dark page rather than vanishing.
+const LIGHT_PALETTE = {
+  bg1: "#E8DFCC",
+  bg2: "#C9BEA8",
+  bg3: "#F2EBDD",
+  accent: "#6B1F2B",
+};
+const DARK_PALETTE = {
+  bg1: "#2E2820",
+  bg2: "#473F37",
+  bg3: "#241E18",
+  accent: "#C66074",
+};
+
+type Palette = typeof LIGHT_PALETTE;
+
+// Subscribe to <html data-theme> changes so the canvas swaps palettes when
+// the user toggles. Read once at mount; the MutationObserver covers later
+// flips without re-mounting the canvas.
+function useThemePalette(): Palette {
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const html = document.documentElement;
+    const sync = () => setIsDark(html.getAttribute("data-theme") === "dark");
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(html, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+  return isDark ? DARK_PALETTE : LIGHT_PALETTE;
+}
+
 // Editorial 3D: a slow drift of square "frames" that evoke film apertures
 // without being literal about it. Colors read as cream/wine against the
 // page. Restrained on purpose — this is a reading product, not a demo.
@@ -13,6 +51,7 @@ export function HeroScene() {
   // doesn't fight for main-thread time during first paint.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const palette = useThemePalette();
   if (!mounted) return null;
 
   return (
@@ -34,15 +73,15 @@ export function HeroScene() {
         <directionalLight
           position={[-3, -2, -1]}
           intensity={0.3}
-          color="#6B1F2B"
+          color={palette.accent}
         />
-        <Frames />
+        <Frames palette={palette} />
       </Canvas>
     </div>
   );
 }
 
-function Frames() {
+function Frames({ palette }: { palette: Palette }) {
   const group = useRef<Group>(null);
 
   type Vec3 = [number, number, number];
@@ -54,13 +93,13 @@ function Frames() {
     // so it stops competing with the headline; cream/rule cards drift in
     // front. Keep five — the negative space between them is the point.
     () => [
-      { position: [0.4, 0.8, -0.2], rotation: [0.1, 0.4, 0], color: "#E8DFCC", scale: 1.15 },
-      { position: [2.8, -0.4, -1], rotation: [-0.05, -0.3, 0.1], color: "#C9BEA8", scale: 1.3 },
-      { position: [2.0, 1.6, -3.2], rotation: [0.2, 0.1, -0.08], color: "#6B1F2B", scale: 0.7 },
-      { position: [1.2, -1.4, -0.5], rotation: [-0.15, 0.2, 0.05], color: "#F2EBDD", scale: 1.0 },
-      { position: [3.4, 1.0, -2.1], rotation: [0.05, -0.5, -0.12], color: "#E8DFCC", scale: 0.8 },
+      { position: [0.4, 0.8, -0.2], rotation: [0.1, 0.4, 0], color: palette.bg1, scale: 1.15 },
+      { position: [2.8, -0.4, -1], rotation: [-0.05, -0.3, 0.1], color: palette.bg2, scale: 1.3 },
+      { position: [2.0, 1.6, -3.2], rotation: [0.2, 0.1, -0.08], color: palette.accent, scale: 0.7 },
+      { position: [1.2, -1.4, -0.5], rotation: [-0.15, 0.2, 0.05], color: palette.bg3, scale: 1.0 },
+      { position: [3.4, 1.0, -2.1], rotation: [0.05, -0.5, -0.12], color: palette.bg1, scale: 0.8 },
     ],
-    [],
+    [palette],
   );
 
   useFrame((state) => {

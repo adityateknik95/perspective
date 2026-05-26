@@ -1,24 +1,33 @@
 import type { Config } from "tailwindcss";
 
+// Helper: produce a Tailwind color value that consumes a CSS variable
+// holding space-separated RGB channels, so Tailwind's opacity modifiers
+// (`bg-cream/50`) still work. Light defaults live in globals.css `:root`;
+// dark overrides live under `[data-theme="dark"]`.
+const v = (name: string) => `rgb(var(${name}) / <alpha-value>)`;
+
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
+  // Theme is toggled via a data-theme="dark" attribute on <html>, set by
+  // a small pre-hydration script in the root layout (see ThemeScript).
+  darkMode: ["class", '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
         cream: {
-          DEFAULT: "#F2EBDD",
-          deep: "#E8DFCC",
+          DEFAULT: v("--color-cream"),
+          deep: v("--color-cream-deep"),
         },
         ink: {
-          DEFAULT: "#1A1512",
-          soft: "#3A322C",
-          muted: "#6B5E52",
+          DEFAULT: v("--color-ink"),
+          soft: v("--color-ink-soft"),
+          muted: v("--color-ink-muted"),
         },
         wine: {
-          DEFAULT: "#6B1F2B",
-          deep: "#4A1520",
+          DEFAULT: v("--color-wine"),
+          deep: v("--color-wine-deep"),
         },
-        rule: "#C9BEA8",
+        rule: v("--color-rule"),
       },
       fontFamily: {
         display: ["var(--font-fraunces)", "ui-serif", "Georgia", "serif"],

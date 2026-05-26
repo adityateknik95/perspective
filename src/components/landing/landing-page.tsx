@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { Logo } from "@/components/ui/logo";
 import { buttonClassName } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { LENSES } from "@/lib/lenses";
 import { SmoothScroll } from "./smooth-scroll";
 
@@ -26,6 +27,7 @@ export function LandingPage() {
         <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-5 sm:gap-6 sm:px-6 sm:py-6">
           <Logo className="text-reading-lg sm:text-display-sm" />
           <nav className="flex items-center gap-2 sm:gap-4">
+            <ThemeToggle />
             <Link
               href="/login"
               className="whitespace-nowrap font-mono text-meta-sm uppercase text-ink-soft underline-offset-4 hover:text-ink hover:underline"

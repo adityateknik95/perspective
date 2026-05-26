@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/ui/logo";
 import { buttonClassName } from "@/components/ui/button";
 import { NotificationsBell } from "@/components/notifications/bell";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { AvatarMenu } from "./avatar-menu";
 
 // Server component — reads the session from cookies on every render. The
@@ -39,6 +40,7 @@ export async function AppHeader() {
         </Link>
 
         <nav className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <ThemeToggle />
           {profile ? (
             <>
               <NotificationsBell />

@@ -2,21 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Palette as CSS variables. Tailwind reads these via rgb(var(--…) / <alpha-value>)
+ * so opacity modifiers (`bg-cream/50`) still work. Theme switches by setting
+ * data-theme="dark" on <html> — see ThemeScript in the root layout for the
+ * pre-hydration shim that prevents a flash.
+ *
+ * Semantics are preserved across modes: `cream` is always the page background,
+ * `ink` is always primary text, `wine` is always the accent. Only the actual
+ * RGB shifts. That keeps every existing class working without dark: variants
+ * sprinkled through the codebase.
+ *
+ * Light defaults match the published palette (cream #F2EBDD, ink #1A1512,
+ * wine #6B1F2B, …). Dark mode is a warm late-night reading register — a
+ * near-black warm brown background, a soft cream text, and a slightly
+ * lifted wine so the accent still reads as wine rather than mud.
+ */
 @layer base {
+  :root {
+    --color-cream: 242 235 221;
+    --color-cream-deep: 232 223 204;
+    --color-ink: 26 21 18;
+    --color-ink-soft: 58 50 44;
+    --color-ink-muted: 107 94 82;
+    --color-wine: 107 31 43;
+    --color-wine-deep: 74 21 32;
+    --color-rule: 201 190 168;
+  }
+
+  [data-theme="dark"] {
+    --color-cream: 22 18 15;
+    --color-cream-deep: 34 28 23;
+    --color-ink: 236 228 213;
+    --color-ink-soft: 195 184 168;
+    --color-ink-muted: 140 128 112;
+    --color-wine: 198 96 116;
+    --color-wine-deep: 178 76 96;
+    --color-rule: 71 63 55;
+  }
+
   html {
     font-optical-sizing: auto;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    color-scheme: light;
+  }
+
+  [data-theme="dark"] {
+    color-scheme: dark;
   }
 
   body {
     font-feature-settings: "kern", "liga", "onum";
+    @apply bg-cream text-ink;
   }
 
   ::selection {
-    background-color: #6b1f2b;
-    color: #f2ebdd;
+    background-color: rgb(var(--color-wine));
+    color: rgb(var(--color-cream));
   }
 }
 
@@ -78,7 +122,7 @@
   }
   .prose-like blockquote {
     @apply font-body italic text-ink-soft;
-    border-left: 2px solid theme("colors.rule");
+    border-left: 2px solid rgb(var(--color-rule));
     padding-left: 1.25rem;
     margin-left: 0;
   }
@@ -107,7 +151,7 @@
    * like prompt text, not content. */
   .prose-like p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
-    color: theme("colors.ink.muted");
+    color: rgb(var(--color-ink-muted));
     float: left;
     height: 0;
     pointer-events: none;
