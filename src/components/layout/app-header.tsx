@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/ui/logo";
 import { buttonClassName } from "@/components/ui/button";
+import { NotificationsBell } from "@/components/notifications/bell";
 import { AvatarMenu } from "./avatar-menu";
 
 // Server component — reads the session from cookies on every render. The
@@ -39,11 +40,14 @@ export async function AppHeader() {
 
         <nav className="flex items-center gap-3">
           {profile ? (
-            <AvatarMenu
-              username={profile.username}
-              displayName={profile.display_name}
-              avatarUrl={profile.avatar_url}
-            />
+            <>
+              <NotificationsBell />
+              <AvatarMenu
+                username={profile.username}
+                displayName={profile.display_name}
+                avatarUrl={profile.avatar_url}
+              />
+            </>
           ) : (
             <>
               <Link
