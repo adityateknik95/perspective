@@ -14,6 +14,7 @@ import {
   getViewerReaction,
 } from "@/lib/social/queries";
 import { ReactionPicker } from "@/components/reactions/reaction-picker";
+import { ResponsesSection } from "@/components/responses/responses-section";
 
 // UUIDs are 36 chars with 4 hyphens. Cheap reject for random garbage in the
 // URL — saves a DB round-trip and a misleading 404.
@@ -262,6 +263,10 @@ export default async function PerspectivePage({ params }: PageProps) {
           />
         </div>
       )}
+
+      {/* Responses — same gate as the reaction picker. Drafts and
+          non-author views of private pieces hide the thread entirely. */}
+      {showReactionPicker && <ResponsesSection perspectiveId={p.id} />}
 
       {/* Lens tags */}
       {p.lensTags.length > 0 && (
