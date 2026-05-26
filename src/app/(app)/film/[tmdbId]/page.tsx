@@ -139,24 +139,25 @@ export default async function FilmPage({ params, searchParams }: PageProps) {
     : `/login?next=${encodeURIComponent(`/write/new?film=${film.tmdb_id}`)}`;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12">
-      {/* Header — poster left, meta right. */}
-      <div className="flex flex-col gap-10 md:flex-row">
+    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-12">
+      {/* Header — poster on top on mobile, side-by-side on md+. */}
+      <div className="flex flex-col gap-8 md:flex-row md:gap-10">
         <div className="shrink-0">
           <FilmPoster
             posterPath={film.poster_path}
             title={film.title}
-            width={320}
-            height={480}
+            width={200}
+            height={300}
             size="w500"
             withShadow
             priority
+            className="mx-auto md:mx-0 md:!h-[480px] md:!w-[320px]"
           />
         </div>
 
         <div className="flex-1">
           <p className="font-mono text-meta-sm uppercase text-ink-muted">Film</p>
-          <h1 className="mt-3 font-display text-display-lg leading-tight text-ink">
+          <h1 className="mt-3 break-words font-display text-display-md leading-tight text-ink sm:text-display-lg">
             {film.title}
             <span className="italic">.</span>
           </h1>

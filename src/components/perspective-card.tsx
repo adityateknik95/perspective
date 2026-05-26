@@ -59,8 +59,8 @@ export function PerspectiveCard({
   } = perspective;
 
   return (
-    <article className={cn("border-b border-rule py-8 last:border-b-0", className)}>
-      <div className="flex gap-6">
+    <article className={cn("border-b border-rule py-6 last:border-b-0 sm:py-8", className)}>
+      <div className="flex gap-4 sm:gap-6">
         {showFilm && film && (
           <Link
             href={`/film/${film.tmdbId}`}
@@ -70,15 +70,15 @@ export function PerspectiveCard({
             <FilmPoster
               posterPath={film.posterPath}
               title={film.title}
-              width={80}
-              height={120}
+              width={72}
+              height={108}
               size="w185"
             />
           </Link>
         )}
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 font-mono text-meta-sm uppercase text-ink-muted">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-meta-sm uppercase text-ink-muted">
             <Avatar
               src={author.avatarUrl}
               size={20}
@@ -104,7 +104,7 @@ export function PerspectiveCard({
             )}
           </div>
 
-          <h2 className="mt-3 font-display text-display-sm text-ink">
+          <h2 className="mt-3 font-display text-[1.375rem] leading-snug text-ink sm:text-display-sm">
             <Link
               href={`/perspective/${id}`}
               className="hover:text-wine"

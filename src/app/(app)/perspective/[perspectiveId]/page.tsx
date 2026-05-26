@@ -151,23 +151,23 @@ export default async function PerspectivePage({ params }: PageProps) {
   const signInHref = `/login?next=${encodeURIComponent(`/perspective/${p.id}`)}`;
 
   return (
-    <article className="mx-auto max-w-reading px-6 py-12">
+    <article className="mx-auto max-w-reading px-4 py-10 sm:px-6 sm:py-12">
       {/* Author byline */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
         <Link
           href={`/${p.author.username}`}
-          className="flex items-center gap-3"
+          className="flex min-w-0 items-center gap-3"
         >
           <Avatar
             src={p.author.avatar_url}
             size={32}
             fallback={p.author.display_name || p.author.username}
           />
-          <div>
-            <p className="font-body text-reading-sm text-ink">
+          <div className="min-w-0">
+            <p className="truncate font-body text-reading-sm text-ink">
               {p.author.display_name || p.author.username}
             </p>
-            <p className="font-mono text-meta-sm uppercase text-ink-muted">
+            <p className="truncate font-mono text-meta-sm uppercase text-ink-muted">
               {p.publishedAt ? (
                 <>
                   <time dateTime={p.publishedAt}>
@@ -182,11 +182,13 @@ export default async function PerspectivePage({ params }: PageProps) {
         </Link>
 
         {p.isOwner && (
-          <OwnerActions
-            perspectiveId={p.id}
-            isDraft={p.isDraft}
-            isPrivate={p.isPrivate}
-          />
+          <div className="shrink-0">
+            <OwnerActions
+              perspectiveId={p.id}
+              isDraft={p.isDraft}
+              isPrivate={p.isPrivate}
+            />
+          </div>
         )}
       </div>
 
@@ -204,12 +206,12 @@ export default async function PerspectivePage({ params }: PageProps) {
 
       {/* Title block */}
       <header className="mt-10">
-        <h1 className="font-display text-display-xl leading-[1.05] text-ink">
+        <h1 className="font-display text-display-md leading-[1.1] text-ink sm:text-display-lg md:text-display-xl md:leading-[1.05]">
           {p.title}
           <span className="italic">.</span>
         </h1>
         {p.subtitle && (
-          <p className="mt-4 font-body text-reading-lg italic text-ink-soft">
+          <p className="mt-4 font-body text-reading italic text-ink-soft sm:text-reading-lg">
             {p.subtitle}
           </p>
         )}
@@ -218,7 +220,7 @@ export default async function PerspectivePage({ params }: PageProps) {
       {/* Film context card */}
       <Link
         href={`/film/${p.film.tmdb_id}`}
-        className="mt-10 flex items-center gap-4 border border-rule bg-cream-deep/40 p-4 hover:border-ink-soft"
+        className="mt-10 flex items-center gap-3 border border-rule bg-cream-deep/40 p-3 hover:border-ink-soft sm:gap-4 sm:p-4"
       >
         <FilmPoster
           posterPath={p.film.poster_path}
@@ -232,11 +234,11 @@ export default async function PerspectivePage({ params }: PageProps) {
           <p className="font-mono text-meta-sm uppercase text-ink-muted">
             On
           </p>
-          <p className="mt-1 truncate font-display text-display-sm text-ink">
+          <p className="mt-1 truncate font-display text-reading-lg text-ink sm:text-display-sm">
             {p.film.title}
             <span className="italic">.</span>
           </p>
-          <p className="mt-1 font-mono text-meta-sm uppercase text-ink-muted">
+          <p className="mt-1 truncate font-mono text-meta-sm uppercase text-ink-muted">
             {p.film.year ?? "\u2014"}
             {p.film.director ? ` \u00b7 ${p.film.director}` : ""}
           </p>

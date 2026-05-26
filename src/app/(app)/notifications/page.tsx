@@ -56,13 +56,13 @@ export default async function NotificationsPage({ searchParams }: PageProps) {
     : null;
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
-      <header className="flex items-start justify-between gap-6">
+    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-12">
+      <header className="flex items-start justify-between gap-4">
         <div>
           <p className="font-mono text-meta-sm uppercase text-ink-muted">
             Inbox
           </p>
-          <h1 className="mt-3 font-display text-display-md text-ink">
+          <h1 className="mt-3 font-display text-display-sm text-ink sm:text-display-md">
             Notifications<span className="italic">.</span>
           </h1>
           {unreadCount > 0 && (

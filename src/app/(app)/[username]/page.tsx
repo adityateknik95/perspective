@@ -251,16 +251,16 @@ function ProfileView({
 }) {
   const signInHref = `/login?next=${encodeURIComponent(`/${username}`)}`;
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16">
-      <div className="flex flex-col items-start gap-8 sm:flex-row sm:items-center">
+    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-16">
+      <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-8">
         <Avatar
           src={avatarUrl}
-          size={96}
+          size={80}
           fallback={displayName || username}
         />
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-display text-display-md text-ink">
+            <h1 className="break-words font-display text-display-sm text-ink sm:text-display-md">
               {displayName || username}
               <span className="italic">.</span>
             </h1>

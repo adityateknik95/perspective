@@ -30,15 +30,15 @@ export async function AppHeader() {
 
   return (
     <header className="border-b border-rule bg-cream">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6">
         <Link
           href="/"
-          className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+          className="min-w-0 truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
         >
-          <Logo className="text-display-sm" />
+          <Logo className="text-reading-lg sm:text-display-sm" />
         </Link>
 
-        <nav className="flex items-center gap-3">
+        <nav className="flex shrink-0 items-center gap-2 sm:gap-3">
           {profile ? (
             <>
               <NotificationsBell />
@@ -52,13 +52,13 @@ export async function AppHeader() {
             <>
               <Link
                 href="/login"
-                className="font-mono text-meta-sm uppercase text-ink-soft underline-offset-4 hover:text-ink hover:underline"
+                className="whitespace-nowrap font-mono text-meta-sm uppercase text-ink-soft underline-offset-4 hover:text-ink hover:underline"
               >
                 Sign in
               </Link>
               <Link
                 href="/signup"
-                className={buttonClassName("primary", "sm")}
+                className={buttonClassName("primary", "sm", "whitespace-nowrap")}
               >
                 Start writing
               </Link>

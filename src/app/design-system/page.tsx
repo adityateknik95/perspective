@@ -32,12 +32,12 @@ const bodySizes = [
 
 export default function DesignSystemPage() {
   return (
-    <main className="mx-auto max-w-5xl px-6 py-16">
+    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16">
       <header className="mb-12 border-b border-rule pb-8">
         <p className="font-mono text-meta uppercase text-ink-muted">
           Perspective
         </p>
-        <h1 className="mt-4 font-display text-display-lg text-ink">
+        <h1 className="mt-4 font-display text-display-md text-ink sm:text-display-lg">
           Design system
         </h1>
         <p className="mt-4 max-w-prose font-body text-reading text-ink-soft">

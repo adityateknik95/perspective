@@ -23,23 +23,26 @@ export function LandingPage() {
       <SmoothScroll />
 
       <div className="relative overflow-hidden">
-        <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-          <Logo className="text-display-sm" />
-          <nav className="flex items-center gap-4">
+        <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-5 sm:gap-6 sm:px-6 sm:py-6">
+          <Logo className="text-reading-lg sm:text-display-sm" />
+          <nav className="flex items-center gap-2 sm:gap-4">
             <Link
               href="/login"
-              className="font-mono text-meta-sm uppercase text-ink-soft underline-offset-4 hover:text-ink hover:underline"
+              className="whitespace-nowrap font-mono text-meta-sm uppercase text-ink-soft underline-offset-4 hover:text-ink hover:underline"
             >
               Sign in
             </Link>
-            <Link href="/signup" className={buttonClassName("primary", "sm")}>
+            <Link
+              href="/signup"
+              className={buttonClassName("primary", "sm", "whitespace-nowrap")}
+            >
               Start writing
             </Link>
           </nav>
         </header>
 
         {/* Hero */}
-        <section className="relative mx-auto flex min-h-[calc(100vh-6rem)] max-w-6xl flex-col justify-center px-6 pb-24 pt-16">
+        <section className="relative mx-auto flex min-h-[calc(100vh-6rem)] max-w-6xl flex-col justify-center px-4 pb-20 pt-12 sm:px-6 sm:pb-24 sm:pt-16">
           <HeroScene />
 
           <motion.p
@@ -55,7 +58,7 @@ export function LandingPage() {
             initial={reduce ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.2 }}
-            className="mt-6 max-w-4xl font-display text-display-2xl text-ink [text-wrap:balance]"
+            className="mt-6 max-w-4xl font-display text-display-lg text-ink [text-wrap:balance] sm:text-display-xl md:text-display-2xl"
           >
             How you <span className="italic">saw</span> it, not how you rated it
             <span className="italic">.</span>
@@ -76,12 +79,18 @@ export function LandingPage() {
             initial={reduce ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.9, delay: 0.55 }}
-            className="mt-10 flex flex-wrap items-center gap-4"
+            className="mt-10 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4"
           >
-            <Link href="/signup" className={buttonClassName("primary", "lg")}>
+            <Link
+              href="/signup"
+              className={buttonClassName("primary", "lg", "justify-center")}
+            >
               Start your first entry
             </Link>
-            <Link href="/login" className={buttonClassName("secondary", "lg")}>
+            <Link
+              href="/login"
+              className={buttonClassName("secondary", "lg", "justify-center")}
+            >
               I have an account
             </Link>
           </motion.div>
@@ -89,11 +98,11 @@ export function LandingPage() {
 
         {/* Lenses */}
         <section className="border-t border-rule bg-cream-deep/40">
-          <div className="mx-auto max-w-6xl px-6 py-24">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
             <p className="font-mono text-meta-sm uppercase text-ink-muted">
               The lenses
             </p>
-            <h2 className="mt-4 max-w-2xl font-display text-display-lg text-ink">
+            <h2 className="mt-4 max-w-2xl font-display text-display-md text-ink sm:text-display-lg">
               Thirteen ways to file a feeling
               <span className="italic">.</span>
             </h2>
@@ -130,12 +139,12 @@ export function LandingPage() {
 
         {/* Manifesto */}
         <section className="border-t border-rule">
-          <div className="mx-auto grid max-w-6xl gap-16 px-6 py-24 md:grid-cols-2">
+          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:gap-16 sm:px-6 sm:py-24 md:grid-cols-2">
             <div>
               <p className="font-mono text-meta-sm uppercase text-ink-muted">
                 Why not stars
               </p>
-              <h2 className="mt-4 font-display text-display-lg text-ink">
+              <h2 className="mt-4 font-display text-display-md text-ink sm:text-display-lg">
                 The rating was never the review
                 <span className="italic">.</span>
               </h2>
@@ -158,8 +167,8 @@ export function LandingPage() {
 
         {/* CTA */}
         <section className="border-t border-rule bg-ink text-cream">
-          <div className="mx-auto max-w-6xl px-6 py-24 text-center">
-            <h2 className="font-display text-display-xl">
+          <div className="mx-auto max-w-6xl px-4 py-16 text-center sm:px-6 sm:py-24">
+            <h2 className="font-display text-display-lg sm:text-display-xl">
               Start one entry
               <span className="italic">.</span>
             </h2>
@@ -183,8 +192,8 @@ export function LandingPage() {
         </section>
 
         <footer className="border-t border-rule">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-8 font-mono text-meta-sm uppercase text-ink-muted">
-            <Logo className="text-display-sm" />
+          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-4 py-8 font-mono text-meta-sm uppercase text-ink-muted sm:flex-row sm:items-center sm:px-6">
+            <Logo className="text-reading-lg sm:text-display-sm" />
             <Link
               href="/design-system"
               className="text-ink-soft underline-offset-4 hover:text-ink hover:underline"
