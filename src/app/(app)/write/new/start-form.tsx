@@ -34,7 +34,7 @@ export function StartForm({ error }: StartFormProps) {
       </h1>
       <p className="mt-4 max-w-prose font-body text-reading text-ink-soft">
         Search for the film first. We&apos;ll start a draft for you — no
-        commitment, nothing is published until you say so.
+        commitment, nothing is shared until you say so.
       </p>
 
       <div className="mt-10">

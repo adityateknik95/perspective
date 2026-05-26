@@ -119,9 +119,9 @@ Open [http://localhost:3000](http://localhost:3000).
 4. Fill in display name → bio → lenses and submit — you're dropped on your profile at `/<your-username>`.
 5. Click **Write**. Search for a film in the combobox — results stream from TMDB.
 6. Pick a film. A draft is created and you're redirected into the Tiptap editor. Type anything; "Saving…" appears in the status bar, then "Saved 10:32" once the debounced autosave lands.
-7. Click **Publish…**. Pick 1-3 lenses, optionally toggle privacy, confirm. You land on `/perspective/<uuid>` with the drop-cap read view.
+7. Click **Share…**. Pick 1-3 lenses, optionally toggle privacy, confirm. You land on `/perspective/<uuid>` with the drop-cap read view.
 8. Revisit `/<your-username>` — your piece is in the **Journals** feed. Drafts and private pieces appear below in **Only visible to you**.
-9. Open your piece, click **Edit**, accept the "reopen for editing" confirmation — you're back in the editor with the piece reverted to draft. Re-publish to restore it (the original publication date is preserved).
+9. Open your piece, click **Edit**, accept the "reopen for editing" confirmation — you're back in the editor with the piece reverted to draft. Re-share to restore it (the original publication date is preserved).
 
 If you skipped the Google OAuth step, the **Sign in with Google** button will surface a Supabase error — that's expected and means the provider isn't configured yet.
 

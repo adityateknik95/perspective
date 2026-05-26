@@ -32,7 +32,7 @@ export function OwnerActions({
 
     if (
       !confirm(
-        "Reopen for editing? This takes the piece back to a draft until you re-publish.",
+        "Reopen for editing? This takes the piece back to a draft until you re-share.",
       )
     ) {
       return;

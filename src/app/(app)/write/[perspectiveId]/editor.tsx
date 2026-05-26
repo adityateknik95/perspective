@@ -189,7 +189,7 @@ export function Editor({
             size="sm"
             onClick={() => setPublishOpen(true)}
           >
-            Publish…
+            Share…
           </Button>
         </div>
       </div>

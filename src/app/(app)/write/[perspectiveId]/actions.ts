@@ -68,7 +68,7 @@ export async function saveDraftAction(
   if (!owner.perspective.is_draft) {
     return {
       ok: false,
-      error: "This perspective is published. Revert to draft to edit.",
+      error: "This perspective is shared. Revert to draft to edit.",
     };
   }
 

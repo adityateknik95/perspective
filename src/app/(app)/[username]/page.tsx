@@ -349,7 +349,7 @@ function ProfileView({
           </h2>
           {published.length > 0 && (
             <p className="font-mono text-meta-sm uppercase text-ink-muted">
-              {published.length} published
+              {published.length} shared
             </p>
           )}
         </div>
@@ -360,8 +360,8 @@ function ProfileView({
             title={isOwner ? "Nothing here yet." : "No perspectives yet."}
             body={
               isOwner
-                ? "Pick a film, write a perspective, hit publish. Your writing lives here."
-                : `Once @${username} publishes something, it'll appear here.`
+                ? "Pick a film, write a perspective, hit share. Your writing lives here."
+                : `Once @${username} shares something, it'll appear here.`
             }
             action={
               isOwner ? (
@@ -394,7 +394,7 @@ function ProfileView({
             </p>
           </div>
           <p className="mt-2 max-w-prose font-body text-reading-sm text-ink-soft">
-            Pieces in progress, plus anything you&apos;ve published as private.
+            Pieces in progress, plus anything you&apos;ve shared as private.
             Readers don&apos;t see this section.
           </p>
           <div className="mt-6">

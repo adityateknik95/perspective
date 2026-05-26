@@ -131,7 +131,7 @@ export function PublishDialog({
             id="publish-dialog-title"
             className="font-display text-display-sm text-ink"
           >
-            Publish<span className="italic">.</span>
+            Share<span className="italic">.</span>
           </h2>
           <button
             type="button"
@@ -144,7 +144,7 @@ export function PublishDialog({
         </div>
 
         <p className="mt-2 font-body text-reading text-ink-soft">
-          Everything below can be changed later by editing and re-publishing.
+          Everything below can be changed later by editing and re-sharing.
         </p>
 
         <div className="mt-6 space-y-5">
@@ -205,7 +205,7 @@ export function PublishDialog({
             </label>
             <p className="mt-1 max-w-prose font-body text-reading-sm text-ink-soft">
               Private pieces don&apos;t appear on film pages or your public
-              profile. You can flip this later by re-publishing.
+              profile. You can flip this later by re-sharing.
             </p>
           </div>
         </div>
@@ -234,7 +234,7 @@ export function PublishDialog({
             onClick={onSubmit}
             disabled={isPending || selected.size === 0}
           >
-            {isPending ? "Publishing…" : "Publish"}
+            {isPending ? "Sharing…" : "Share"}
           </Button>
         </div>
       </div>

@@ -199,7 +199,7 @@ export default async function PerspectivePage({ params }: PageProps) {
           <span className="ml-2 normal-case tracking-normal font-body text-reading-sm text-ink-soft">
             {p.isDraft
               ? "\u2014 only you can see this."
-              : "\u2014 only you can see this. Re-publish without privacy to share."}
+              : "\u2014 only you can see this. Re-share without privacy to make it public."}
           </span>
         </div>
       )}
