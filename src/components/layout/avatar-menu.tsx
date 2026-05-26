@@ -93,6 +93,9 @@ export function AvatarMenu({
           </p>
         </div>
         <ul className="py-2 text-sm">
+          <MenuItem href="/home" onClick={() => setOpen(false)}>
+            Home
+          </MenuItem>
           <MenuItem href={`/${username}`} onClick={() => setOpen(false)}>
             View profile
           </MenuItem>
