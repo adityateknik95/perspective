@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/ui/logo";
 import { buttonClassName } from "@/components/ui/button";
@@ -40,6 +41,14 @@ export async function AppHeader() {
         </Link>
 
         <nav className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <Link
+            href="/search"
+            aria-label="Find people"
+            title="Find people"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-cream-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+          >
+            <Search size={18} strokeWidth={1.75} aria-hidden />
+          </Link>
           <ThemeToggle />
           {profile ? (
             <>
