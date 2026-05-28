@@ -57,11 +57,11 @@ export function HeroScene() {
   return (
     <div
       aria-hidden
-      // Lower opacity + constrain to the right half so the frames sit behind
-      // the negative space next to the headline rather than slicing through
-      // it. On narrow viewports the mask collapses to full-width so the
-      // composition still reads.
-      className="pointer-events-none absolute inset-y-0 -z-10 right-0 w-full opacity-50 [mask-image:linear-gradient(to_right,transparent,black_30%,black)] md:left-1/3 md:w-2/3 md:opacity-60"
+      // Quiet on purpose. The frames live in the right-hand negative space,
+      // not behind the text. Low opacity + a long left-fade so they read as
+      // atmosphere rather than illustration — the headline is the subject,
+      // this is the room it sits in. Mask collapses gracefully on mobile.
+      className="pointer-events-none absolute inset-y-0 -z-10 right-0 w-full opacity-35 [mask-image:linear-gradient(to_right,transparent,black_55%,black)] md:left-1/2 md:w-1/2 md:opacity-45"
     >
       <Canvas
         dpr={[1, 1.5]}
@@ -88,16 +88,15 @@ function Frames({ palette }: { palette: Palette }) {
   const frames = useMemo<
     Array<{ position: Vec3; rotation: Vec3; color: string; scale: number }>
   >(
-    // Repositioned to sit in the right half of the canvas (the canvas is
-    // already masked to that side). The wine card moved deepest + smallest
-    // so it stops competing with the headline; cream/rule cards drift in
-    // front. Keep five — the negative space between them is the point.
+    // Four frames, all pushed to the right and set back in Z so they read
+    // as depth, not foreground. The wine accent is the smallest and deepest
+    // so it never competes with the headline — it's a glint, not a card.
+    // Fewer frames + more space between them = calmer composition.
     () => [
-      { position: [0.4, 0.8, -0.2], rotation: [0.1, 0.4, 0], color: palette.bg1, scale: 1.15 },
-      { position: [2.8, -0.4, -1], rotation: [-0.05, -0.3, 0.1], color: palette.bg2, scale: 1.3 },
-      { position: [2.0, 1.6, -3.2], rotation: [0.2, 0.1, -0.08], color: palette.accent, scale: 0.7 },
-      { position: [1.2, -1.4, -0.5], rotation: [-0.15, 0.2, 0.05], color: palette.bg3, scale: 1.0 },
-      { position: [3.4, 1.0, -2.1], rotation: [0.05, -0.5, -0.12], color: palette.bg1, scale: 0.8 },
+      { position: [1.8, 0.9, -1.0], rotation: [0.1, 0.4, 0], color: palette.bg1, scale: 1.0 },
+      { position: [3.2, -0.5, -1.8], rotation: [-0.05, -0.3, 0.1], color: palette.bg2, scale: 1.15 },
+      { position: [2.6, 1.7, -3.6], rotation: [0.2, 0.1, -0.08], color: palette.accent, scale: 0.6 },
+      { position: [3.6, 0.2, -2.4], rotation: [0.05, -0.5, -0.12], color: palette.bg3, scale: 0.85 },
     ],
     [palette],
   );
