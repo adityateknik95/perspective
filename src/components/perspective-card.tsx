@@ -110,7 +110,6 @@ export function PerspectiveCard({
               className="hover:text-wine"
             >
               {title}
-              <span className="italic">.</span>
             </Link>
           </h2>
 

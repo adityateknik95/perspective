@@ -79,7 +79,7 @@ export async function WritingTab({ viewerId }: WritingTabProps) {
             In progress
           </p>
           <h2 className="mt-2 font-display text-display-sm text-ink">
-            Your drafts<span className="italic">.</span>
+            Your drafts
           </h2>
         </header>
 

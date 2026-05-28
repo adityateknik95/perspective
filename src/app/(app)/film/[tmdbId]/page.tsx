@@ -240,7 +240,7 @@ export default async function FilmPage({ params, searchParams }: PageProps) {
       <section className="mt-16 border-t border-rule pt-10">
         <div className="flex items-baseline justify-between gap-4">
           <h2 className="font-display text-display-sm text-ink">
-            Perspectives<span className="italic">.</span>
+            Perspectives
           </h2>
           <p className="font-mono text-meta-sm uppercase text-ink-muted">
             {totalPerspectives} total

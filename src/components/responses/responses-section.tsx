@@ -44,7 +44,7 @@ export async function ResponsesSection({
     >
       <header className="flex items-baseline justify-between gap-4">
         <h2 className="font-display text-display-sm text-ink">
-          Responses<span className="italic">.</span>
+          Responses
         </h2>
         {visibleCount > 0 && (
           <p className="font-mono text-meta-sm uppercase text-ink-muted">

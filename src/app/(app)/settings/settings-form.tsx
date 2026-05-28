@@ -141,7 +141,7 @@ export function SettingsForm({ initial }: SettingsFormProps) {
     <div className="space-y-10">
       <section className="space-y-4">
         <h2 className="font-display text-display-sm text-ink">
-          Avatar<span className="italic">.</span>
+          Avatar
         </h2>
         <div className="flex items-center gap-6">
           <Avatar
@@ -176,7 +176,7 @@ export function SettingsForm({ initial }: SettingsFormProps) {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8" noValidate>
         <section className="space-y-5">
           <h2 className="font-display text-display-sm text-ink">
-            Profile<span className="italic">.</span>
+            Profile
           </h2>
 
           <div>
@@ -244,7 +244,7 @@ export function SettingsForm({ initial }: SettingsFormProps) {
 
         <section className="space-y-5">
           <h2 className="font-display text-display-sm text-ink">
-            Lenses<span className="italic">.</span>
+            Lenses
           </h2>
           <Controller
             control={control}
@@ -284,7 +284,7 @@ export function SettingsForm({ initial }: SettingsFormProps) {
 
         <section className="space-y-4">
           <h2 className="font-display text-display-sm text-ink">
-            Privacy<span className="italic">.</span>
+            Privacy
           </h2>
           <label className="flex cursor-pointer items-start gap-3">
             <input

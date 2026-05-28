@@ -13,6 +13,11 @@ import {
   getReactionSummary,
   getViewerReaction,
 } from "@/lib/social/queries";
+import {
+  dominantReaction,
+  REACTION_LABELS,
+} from "@/lib/social/reactions";
+import { REACTION_ICONS } from "@/lib/social/reaction-icons";
 import { ReactionPicker } from "@/components/reactions/reaction-picker";
 import { ResponsesSection } from "@/components/responses/responses-section";
 
@@ -122,27 +127,39 @@ export default async function PerspectivePage({ params }: PageProps) {
   } = await supabase.auth.getUser();
   const viewerId = user?.id ?? null;
 
-  // Reactions data + previous perspective lookup run in parallel — they're
-  // independent and both feed the rendered shell.
-  const [reactionSummary, viewerReaction, olderResult] = await Promise.all([
-    getReactionSummary(p.id, supabase),
-    getViewerReaction(p.id, viewerId, supabase),
-    // Previous perspective by the same author — powers the "Next" footer link.
-    // Ordered by published_at desc, so "previous" here means "older piece".
-    supabase
-      .from("perspectives")
-      .select("id, title, film:films!inner(title)")
-      .eq("user_id", p.userId)
-      .eq("is_draft", false)
-      .eq("is_private", false)
-      .lt("published_at", p.publishedAt ?? new Date().toISOString())
-      .order("published_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+  // Reactions data + response count + previous perspective lookup run in
+  // parallel — independent queries, all feed the rendered shell. The
+  // response count feeds the social-strip below the byline so readers
+  // see "23 RESPONSES · 47 MOVED" at the top instead of scrolling to the
+  // bottom of the piece to find out it has any social signal at all.
+  const [reactionSummary, viewerReaction, responseCountResult, olderResult] =
+    await Promise.all([
+      getReactionSummary(p.id, supabase),
+      getViewerReaction(p.id, viewerId, supabase),
+      supabase
+        .from("responses")
+        .select("*", { count: "exact", head: true })
+        .eq("perspective_id", p.id)
+        .eq("is_deleted", false),
+      // Previous perspective by the same author — powers the "Next" footer.
+      // Ordered by published_at desc, so "previous" means "older piece".
+      supabase
+        .from("perspectives")
+        .select("id, title, film:films!inner(title)")
+        .eq("user_id", p.userId)
+        .eq("is_draft", false)
+        .eq("is_private", false)
+        .lt("published_at", p.publishedAt ?? new Date().toISOString())
+        .order("published_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
 
+  const responseCount = responseCountResult.count ?? 0;
   const older = olderResult.data;
   const olderFilm = older && (Array.isArray(older.film) ? older.film[0] : older.film);
+  const dominant = dominantReaction(reactionSummary);
+  const DominantIcon = dominant ? REACTION_ICONS[dominant] : null;
 
   // Drafts and private pieces don't take public reactions. Authors can still
   // self-react on their own private/published pieces — useful for testing
@@ -192,6 +209,45 @@ export default async function PerspectivePage({ params }: PageProps) {
         )}
       </div>
 
+      {/* Social signal strip — anchors to the picker/thread below. We hide
+          this entirely when nothing has happened yet (0 responses, 0
+          reactions) so a fresh post doesn't carry empty scaffolding at
+          the top. Counts use ink for the number + muted for the label so
+          the eye lands on the count first. */}
+      {(responseCount > 0 || reactionSummary.total > 0) && (
+        <nav
+          aria-label="Quick links to social signal"
+          className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-meta-sm uppercase tracking-[0.15em] text-ink-muted"
+        >
+          {responseCount > 0 && (
+            <a
+              href="#responses"
+              className="inline-flex items-baseline gap-1.5 underline-offset-4 transition-colors hover:text-ink"
+            >
+              <span className="text-ink">{responseCount}</span>
+              <span>{responseCount === 1 ? "response" : "responses"}</span>
+            </a>
+          )}
+          {responseCount > 0 && dominant && reactionSummary[dominant] > 0 && (
+            <span aria-hidden>·</span>
+          )}
+          {dominant && reactionSummary[dominant] > 0 && (
+            <a
+              href="#reactions"
+              className="inline-flex items-center gap-1.5 underline-offset-4 transition-colors hover:text-ink"
+            >
+              {DominantIcon && (
+                <DominantIcon size={12} strokeWidth={1.75} aria-hidden />
+              )}
+              <span className="text-ink">
+                {reactionSummary[dominant].toLocaleString()}
+              </span>
+              <span>{REACTION_LABELS[dominant].toLowerCase()}</span>
+            </a>
+          )}
+        </nav>
+      )}
+
       {/* Status strip — only for the author on a draft / private piece */}
       {p.isOwner && (p.isDraft || p.isPrivate) && (
         <div className="mt-6 border-l-2 border-wine bg-cream-deep/60 px-4 py-3 font-mono text-meta-sm uppercase text-ink">
@@ -236,7 +292,6 @@ export default async function PerspectivePage({ params }: PageProps) {
           </p>
           <p className="mt-1 truncate font-display text-reading-lg text-ink sm:text-display-sm">
             {p.film.title}
-            <span className="italic">.</span>
           </p>
           <p className="mt-1 truncate font-mono text-meta-sm uppercase text-ink-muted">
             {p.film.year ?? "\u2014"}
@@ -255,7 +310,7 @@ export default async function PerspectivePage({ params }: PageProps) {
 
       {/* Reactions */}
       {showReactionPicker && (
-        <div className="mt-14">
+        <div id="reactions" className="mt-14 scroll-mt-16">
           <ReactionPicker
             perspectiveId={p.id}
             initialViewerReaction={viewerReaction}
@@ -267,8 +322,14 @@ export default async function PerspectivePage({ params }: PageProps) {
       )}
 
       {/* Responses — same gate as the reaction picker. Drafts and
-          non-author views of private pieces hide the thread entirely. */}
-      {showReactionPicker && <ResponsesSection perspectiveId={p.id} />}
+          non-author views of private pieces hide the thread entirely.
+          scroll-mt-16 keeps the section title visible below the sticky
+          header when anchored to from the social strip. */}
+      {showReactionPicker && (
+        <div id="responses" className="scroll-mt-16">
+          <ResponsesSection perspectiveId={p.id} />
+        </div>
+      )}
 
       {/* Lens tags */}
       {p.lensTags.length > 0 && (
@@ -304,7 +365,6 @@ export default async function PerspectivePage({ params }: PageProps) {
           >
             <h3 className="font-display text-display-sm text-ink group-hover:text-wine">
               {older.title}
-              <span className="italic">.</span>
             </h3>
             <p className="mt-1 font-mono text-meta-sm uppercase text-ink-muted">
               On {olderFilm.title}

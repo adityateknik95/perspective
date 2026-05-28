@@ -109,7 +109,6 @@ function FilmStrip({
         </p>
         <h2 className="mt-2 font-display text-display-sm text-ink">
           {title.replace(/\.$/, "")}
-          <span className="italic">.</span>
         </h2>
         <p className="mt-1 max-w-prose font-body text-reading-sm text-ink-soft">
           {body}

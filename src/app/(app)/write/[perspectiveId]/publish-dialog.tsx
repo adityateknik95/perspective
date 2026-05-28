@@ -131,7 +131,7 @@ export function PublishDialog({
             id="publish-dialog-title"
             className="font-display text-display-sm text-ink"
           >
-            Share<span className="italic">.</span>
+            Share
           </h2>
           <button
             type="button"

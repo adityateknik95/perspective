@@ -166,11 +166,20 @@
   .prose-like-read > p:first-of-type::first-letter {
     @apply font-display text-ink;
     float: left;
-    font-size: 4.5rem;
+    /* Mobile: 3rem keeps the drop-cap proportional on a ~327px reading
+       column. Desktop steps up to the editorial 4.5rem for the full
+       magazine flourish. */
+    font-size: 3rem;
     line-height: 0.85;
     padding-top: 0.25rem;
-    padding-right: 0.5rem;
+    padding-right: 0.45rem;
     padding-bottom: 0.1rem;
     font-weight: 500;
+  }
+  @media (min-width: 640px) {
+    .prose-like-read > p:first-of-type::first-letter {
+      font-size: 4.5rem;
+      padding-right: 0.5rem;
+    }
   }
 }

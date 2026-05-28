@@ -32,7 +32,7 @@ async function getOwnedPerspective(id: string) {
 
   const { data, error } = await supabase
     .from("perspectives")
-    .select("id, user_id, film_id, is_draft, published_at")
+    .select("id, user_id, film_id, is_draft, is_private, published_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -184,9 +184,9 @@ export async function revertToDraftAction(
   return { ok: true, data: { id } };
 }
 
-// Hard delete. Only available for drafts (to avoid surprising readers with
-// a dead-link). Published pieces should be reverted-and-deleted if the
-// author really means it.
+// Hard delete from the editor — only operates on drafts. Editor calls this
+// from the "Delete draft" affordance. The read-view owner menu uses
+// deleteSharedAction instead so it can also delete published pieces.
 export async function deletePerspectiveAction(id: string): Promise<never> {
   const owner = await getOwnedPerspective(id);
   if (!owner.ok) {
@@ -207,7 +207,78 @@ export async function deletePerspectiveAction(id: string): Promise<never> {
     redirect(`/write/${id}`);
   }
 
-  // Send them home. Their profile page is the natural next destination,
-  // but we don't have the username handy without another round-trip.
   redirect("/");
+}
+
+// Hard delete from the read view's owner menu. Unlike deletePerspectiveAction
+// above, this works on both drafts and published pieces — readers see a
+// 404 next time they hit the URL, which is intentional. We don't soft-delete
+// because there's no recover-from-trash surface in v1 and the piece's
+// reactions/responses would just sit as orphan rows. Cascade delete in the
+// schema handles them on the way out.
+export async function deleteSharedAction(
+  id: string,
+): Promise<ActionResult<{ id: string; username: string }>> {
+  const owner = await getOwnedPerspective(id);
+  if (!owner.ok) return owner;
+
+  // Fetch the username before the row is gone so we can route the user
+  // back to their profile after the deletion lands.
+  const { data: profile } = await owner.supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", owner.perspective.user_id)
+    .maybeSingle();
+
+  const { error } = await owner.supabase
+    .from("perspectives")
+    .delete()
+    .eq("id", id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/perspective/${id}`);
+  if (profile?.username) {
+    revalidatePath(`/${profile.username}`);
+  }
+
+  return {
+    ok: true,
+    data: { id, username: profile?.username ?? "" },
+  };
+}
+
+// Flip is_private without touching is_draft or published_at. Author-only.
+// Useful from the read view's owner menu — "make this public" / "make
+// this private" without the full Share dialog.
+export async function togglePrivacyAction(
+  id: string,
+  nextValue: boolean,
+): Promise<ActionResult<{ id: string; isPrivate: boolean }>> {
+  const owner = await getOwnedPerspective(id);
+  if (!owner.ok) return owner;
+
+  // Drafts have no meaningful "private" state — they're not shared yet.
+  // Bail out rather than confuse the data.
+  if (owner.perspective.is_draft) {
+    return {
+      ok: false,
+      error: "Drafts aren't shared yet — privacy applies after you share.",
+    };
+  }
+
+  if (owner.perspective.is_private === nextValue) {
+    // Idempotent — already at the target state.
+    return { ok: true, data: { id, isPrivate: nextValue } };
+  }
+
+  const { error } = await owner.supabase
+    .from("perspectives")
+    .update({ is_private: nextValue })
+    .eq("id", id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/perspective/${id}`);
+  return { ok: true, data: { id, isPrivate: nextValue } };
 }

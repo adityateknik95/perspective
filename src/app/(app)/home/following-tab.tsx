@@ -138,7 +138,7 @@ export async function FollowingTab({ viewerId }: FollowingTabProps) {
           From people you read
         </p>
         <h2 className="mt-2 font-display text-display-sm text-ink">
-          Recent perspectives<span className="italic">.</span>
+          Recent perspectives
         </h2>
       </header>
       <div>
