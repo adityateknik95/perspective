@@ -346,11 +346,13 @@ function ProfileView({
           </p>
           <ul className="mt-4 flex flex-wrap gap-2">
             {lenses.map((lens) => (
-              <li
-                key={lens}
-                className="border border-rule px-3 py-1 font-mono text-meta-sm uppercase text-ink"
-              >
-                {lens}
+              <li key={lens}>
+                <Link
+                  href={`/lens/${lens}`}
+                  className="inline-block border border-rule px-3 py-1 font-mono text-meta-sm uppercase text-ink transition-colors hover:border-wine hover:bg-wine hover:text-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+                >
+                  {lens}
+                </Link>
               </li>
             ))}
           </ul>

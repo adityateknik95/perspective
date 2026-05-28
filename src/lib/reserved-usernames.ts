@@ -15,10 +15,12 @@ export const RESERVED_USERNAMES = new Set<string>([
   "reset_password",
   "auth",
   "api",
+  "notifications",
 
   // Planned header nav (from the product mockup)
   "feed",
   "discover",
+  "lens",
   "lenses",
   "library",
   "write",
