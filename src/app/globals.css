@@ -71,6 +71,28 @@
   .text-pretty {
     text-wrap: pretty;
   }
+
+  /* Slide-down entrance for the inline Share panel in the editor. Collapses
+     from zero height with a slight fade so it reads as unfolding from the
+     toolbar rather than popping in. Respects reduced-motion. */
+  @keyframes share-panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(-0.5rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-share-panel {
+    animation: share-panel-in 0.22s ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-share-panel {
+      animation: none;
+    }
+  }
 }
 
 /*

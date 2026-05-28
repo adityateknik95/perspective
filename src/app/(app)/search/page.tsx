@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { isReservedUsername } from "@/lib/reserved-usernames";
+import type { ProfileRowData } from "@/components/profile-row";
 import { PeopleSearch } from "./people-search";
 
 export const metadata: Metadata = {
@@ -35,6 +37,32 @@ export default async function SearchPage() {
       .filter((u): u is string => !!u);
   }
 
+  // Seed the empty state with recently-joined writers so the page isn't a
+  // blank prompt. We only suggest onboarded profiles (display name set) so
+  // half-formed accounts don't surface, exclude the viewer, and over-fetch
+  // a little to absorb the reserved-name + self filters.
+  const { data: recentRows } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, avatar_url, bio, is_private, signature_lenses, created_at")
+    .not("display_name", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(12);
+
+  const suggestions: ProfileRowData[] = (recentRows ?? [])
+    .filter((p) => p.id !== user?.id)
+    .filter((p) => !isReservedUsername(p.username))
+    .filter((p) => (p.display_name ?? "").trim().length > 0)
+    .slice(0, 6)
+    .map((p) => ({
+      id: p.id,
+      username: p.username,
+      display_name: p.display_name ?? "",
+      avatar_url: p.avatar_url,
+      bio: p.bio,
+      is_private: p.is_private,
+      signature_lenses: p.signature_lenses ?? [],
+    }));
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-12">
       <header className="mb-8">
@@ -53,6 +81,7 @@ export default async function SearchPage() {
       <PeopleSearch
         isSignedIn={!!user}
         followingUsernames={followingUsernames}
+        suggestions={suggestions}
       />
     </div>
   );

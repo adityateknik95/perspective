@@ -185,14 +185,31 @@ export function Editor({
             Delete draft
           </Button>
           <Button
-            variant="primary"
+            variant={publishOpen ? "secondary" : "primary"}
             size="sm"
-            onClick={() => setPublishOpen(true)}
+            aria-expanded={publishOpen}
+            onClick={() => setPublishOpen((v) => !v)}
           >
-            Share…
+            {publishOpen ? "Close" : "Share…"}
           </Button>
         </div>
       </div>
+
+      {/* Share panel slides down inline here — no modal, the editor stays
+          visible beneath it so you can still see what you're sharing. */}
+      {publishOpen && editor && (
+        <PublishDialog
+          perspectiveId={perspectiveId}
+          initialLenses={initialLenses}
+          initialIsPrivate={initialIsPrivate}
+          getSnapshot={() => ({
+            title: latestRef.current.title,
+            subtitle: latestRef.current.subtitle,
+            body: editor.getHTML(),
+          })}
+          onClose={() => setPublishOpen(false)}
+        />
+      )}
 
       <input
         type="text"
@@ -216,22 +233,6 @@ export function Editor({
         {editor && <BubbleToolbar editor={editor} />}
         <EditorContent editor={editor} />
       </div>
-
-      {publishOpen && editor && (
-        <PublishDialog
-          perspectiveId={perspectiveId}
-          initialLenses={initialLenses}
-          initialIsPrivate={initialIsPrivate}
-          // Pass fresh snapshots from the ref so the publish payload reflects
-          // whatever is on screen right now, not stale state.
-          getSnapshot={() => ({
-            title: latestRef.current.title,
-            subtitle: latestRef.current.subtitle,
-            body: editor.getHTML(),
-          })}
-          onClose={() => setPublishOpen(false)}
-        />
-      )}
     </div>
   );
 }

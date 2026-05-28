@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
-import { ProfileRow } from "@/components/profile-row";
+import { ProfileRow, type ProfileRowData } from "@/components/profile-row";
 import { cn } from "@/lib/cn";
 import type { PeopleSearchResult } from "@/app/api/people-search/route";
 
@@ -12,6 +12,9 @@ interface PeopleSearchProps {
   // FollowButton with the right state so the page renders correctly without
   // a per-row round-trip.
   followingUsernames: string[];
+  // Recently-joined writers shown in the idle (no-query) state so the page
+  // isn't a blank prompt. Server-fetched in the page shell.
+  suggestions: ProfileRowData[];
 }
 
 // Two-character minimum mirrors the server. Single-char queries would
@@ -33,6 +36,7 @@ type Status =
 export function PeopleSearch({
   isSignedIn,
   followingUsernames,
+  suggestions,
 }: PeopleSearchProps) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -139,11 +143,30 @@ export function PeopleSearch({
       </div>
 
       <div className="mt-4">
-        {status.kind === "idle" && trimmed.length === 0 && (
-          <p className="py-8 text-center font-body text-reading-sm italic text-ink-muted">
-            Start typing to find writers.
-          </p>
-        )}
+        {status.kind === "idle" &&
+          trimmed.length === 0 &&
+          (suggestions.length > 0 ? (
+            <div>
+              <p className="mb-1 font-mono text-meta-sm uppercase tracking-[0.15em] text-ink-muted">
+                Recently joined
+              </p>
+              <ul className="divide-y divide-rule border-y border-rule">
+                {suggestions.map((profile) => (
+                  <li key={profile.id}>
+                    <ProfileRow
+                      profile={profile}
+                      isSignedIn={isSignedIn}
+                      initialFollowing={followingSet.current.has(profile.username)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="py-8 text-center font-body text-reading-sm italic text-ink-muted">
+              Start typing to find writers.
+            </p>
+          ))}
 
         {status.kind === "idle" && trimmed.length > 0 && (
           <p className="py-8 text-center font-mono text-meta-sm uppercase text-ink-muted">

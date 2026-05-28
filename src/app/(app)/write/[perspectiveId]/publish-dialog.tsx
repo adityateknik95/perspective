@@ -48,10 +48,8 @@ export function PublishDialog({
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-
-  // Escape to close. Focus-trap is intentionally simple — the dialog has
-  // few tabbables so native tab order is enough.
+  // Escape to close. The panel is inline (not a modal), so no focus trap —
+  // tab order flows naturally into the editor beneath.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape" && !isPending) onClose();
@@ -111,21 +109,10 @@ export function PublishDialog({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="publish-dialog-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-6"
-      onClick={(e) => {
-        // Click on the backdrop closes, but only if the click originated
-        // on the backdrop (not on the dialog that bubbled up).
-        if (e.target === e.currentTarget && !isPending) onClose();
-      }}
+    <section
+      aria-label="Share this perspective"
+      className="animate-share-panel mb-8 origin-top overflow-hidden border border-rule bg-cream-deep/40 p-6 sm:p-8"
     >
-      <div
-        ref={dialogRef}
-        className="w-full max-w-xl border border-rule bg-cream p-8 shadow-lg"
-      >
         <div className="flex items-baseline justify-between gap-4">
           <h2
             id="publish-dialog-title"
@@ -237,7 +224,6 @@ export function PublishDialog({
             {isPending ? "Sharing…" : "Share"}
           </Button>
         </div>
-      </div>
-    </div>
+    </section>
   );
 }
