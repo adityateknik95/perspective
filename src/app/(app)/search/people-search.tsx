@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Search, X } from "lucide-react";
-import { Avatar } from "@/components/ui/avatar";
-import { FollowButton } from "@/components/follows/follow-button";
-import { isLens } from "@/lib/lenses";
+import { ProfileRow } from "@/components/profile-row";
 import { cn } from "@/lib/cn";
 import type { PeopleSearchResult } from "@/app/api/people-search/route";
 
@@ -158,7 +155,7 @@ export function PeopleSearch({
           <ul className="divide-y divide-rule border-y border-rule">
             {status.results.map((profile) => (
               <li key={profile.id}>
-                <ResultRow
+                <ProfileRow
                   profile={profile}
                   isSignedIn={isSignedIn}
                   initialFollowing={followingSet.current.has(profile.username)}
@@ -173,77 +170,6 @@ export function PeopleSearch({
             No matches. Try a different spelling — or invite them yourself.
           </p>
         )}
-      </div>
-    </div>
-  );
-}
-
-interface ResultRowProps {
-  profile: PeopleSearchResult;
-  isSignedIn: boolean;
-  initialFollowing: boolean;
-}
-
-// One result row. The avatar + name link wraps a separate region from the
-// follow button — Next's Link will swallow inner button clicks if the
-// button isn't isolated, so we put them side-by-side with a flex layout
-// instead of nesting.
-function ResultRow({ profile, isSignedIn, initialFollowing }: ResultRowProps) {
-  const signInHref = `/login?next=${encodeURIComponent(`/${profile.username}`)}`;
-  const lenses = profile.signature_lenses.filter(isLens).slice(0, 3);
-
-  return (
-    <div className="flex items-start gap-4 py-5">
-      <Link
-        href={`/${profile.username}`}
-        className="flex min-w-0 flex-1 items-start gap-4 hover:opacity-90"
-      >
-        <Avatar
-          src={profile.avatar_url}
-          size={48}
-          fallback={profile.display_name || profile.username}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <p className="truncate font-display text-reading text-ink">
-              {profile.display_name || profile.username}
-            </p>
-            {profile.is_private && (
-              <span className="border border-rule px-1.5 py-0.5 font-mono text-[0.65rem] uppercase text-ink-muted">
-                Private
-              </span>
-            )}
-          </div>
-          <p className="truncate font-mono text-meta-sm uppercase text-ink-muted">
-            @{profile.username}
-          </p>
-          {profile.bio && (
-            <p className="mt-1 line-clamp-2 font-body text-reading-sm text-ink-soft">
-              {profile.bio}
-            </p>
-          )}
-          {lenses.length > 0 && (
-            <ul className="mt-2 flex flex-wrap gap-1.5">
-              {lenses.map((lens) => (
-                <li
-                  key={lens}
-                  className="border border-rule px-2 py-0.5 font-mono text-[0.65rem] uppercase tracking-[0.15em] text-ink-muted"
-                >
-                  {lens}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </Link>
-
-      <div className="shrink-0">
-        <FollowButton
-          username={profile.username}
-          initialFollowing={initialFollowing}
-          isSignedIn={isSignedIn}
-          signInHref={signInHref}
-        />
       </div>
     </div>
   );

@@ -275,20 +275,35 @@ function ProfileView({
           </p>
 
           {/* Follower / following counts. Public for everyone — RLS allows
-              select-all on follows, so we can render these to any viewer. */}
-          <dl className="mt-4 flex gap-6 font-mono text-meta-sm uppercase text-ink-muted">
-            <div className="flex items-baseline gap-1.5">
-              <dd className="font-display text-reading text-ink">
+              select-all on follows, so we can render these to any viewer.
+              Each chip is a Link to the corresponding list page; visually
+              they match the lens-chip register elsewhere on the profile,
+              so the eye groups them as the same kind of metadata. */}
+          <dl className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href={`/${username}/followers`}
+              aria-label={`${followerCount} ${followerCount === 1 ? "follower" : "followers"}`}
+              className="group inline-flex items-baseline gap-2 border border-rule px-3 py-2 transition-colors hover:border-ink-soft hover:bg-cream-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+            >
+              <dd className="font-display text-reading-lg leading-none text-ink">
                 {followerCount.toLocaleString()}
               </dd>
-              <dt>{followerCount === 1 ? "follower" : "followers"}</dt>
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <dd className="font-display text-reading text-ink">
+              <dt className="font-mono text-meta-sm uppercase tracking-[0.15em] text-ink-muted transition-colors group-hover:text-ink">
+                {followerCount === 1 ? "follower" : "followers"}
+              </dt>
+            </Link>
+            <Link
+              href={`/${username}/following`}
+              aria-label={`Following ${followingCount}`}
+              className="group inline-flex items-baseline gap-2 border border-rule px-3 py-2 transition-colors hover:border-ink-soft hover:bg-cream-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+            >
+              <dd className="font-display text-reading-lg leading-none text-ink">
                 {followingCount.toLocaleString()}
               </dd>
-              <dt>following</dt>
-            </div>
+              <dt className="font-mono text-meta-sm uppercase tracking-[0.15em] text-ink-muted transition-colors group-hover:text-ink">
+                following
+              </dt>
+            </Link>
           </dl>
 
           {bio && (
@@ -345,7 +360,7 @@ function ProfileView({
       <section className="mt-14 border-t border-rule pt-10">
         <div className="flex items-baseline justify-between gap-4">
           <h2 className="font-display text-display-sm text-ink">
-            Journals<span className="italic">.</span>
+            Journals
           </h2>
           {published.length > 0 && (
             <p className="font-mono text-meta-sm uppercase text-ink-muted">
@@ -387,7 +402,7 @@ function ProfileView({
         <section className="mt-14 border-t border-rule pt-10">
           <div className="flex items-baseline justify-between gap-4">
             <h2 className="font-display text-display-sm text-ink">
-              Only visible to you<span className="italic">.</span>
+              Only visible to you
             </h2>
             <p className="font-mono text-meta-sm uppercase text-ink-muted">
               Drafts &amp; private
