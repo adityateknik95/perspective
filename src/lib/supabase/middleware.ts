@@ -15,6 +15,14 @@ function isProtected(pathname: string): boolean {
 }
 
 export async function updateSession(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+
+  // Skip the Supabase network call entirely for routes that don't need auth.
+  // This prevents MIDDLEWARE_INVOCATION_TIMEOUT on public pages.
+  if (!isProtected(pathname)) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient<Database>(
@@ -38,14 +46,12 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Refresh the session and read the current user from the (now fresh) cookies.
+  // Only called for protected routes — network latency no longer affects public pages.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname, search } = request.nextUrl;
-
-  if (!user && isProtected(pathname)) {
+  if (!user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.search = `?next=${encodeURIComponent(pathname + search)}`;

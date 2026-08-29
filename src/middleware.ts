@@ -6,9 +6,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    // Skip Next internals, the auth callback (it manages its own cookies),
-    // and any path with a file extension (images, fonts, manifests, etc.).
-    "/((?!_next/static|_next/image|favicon.ico|auth/callback|.*\\..*).*)",
-  ],
+  // Only run middleware on routes that require authentication.
+  // This avoids any Supabase network call on public pages and prevents
+  // MIDDLEWARE_INVOCATION_TIMEOUT on Vercel.
+  matcher: ["/onboarding/:path*", "/settings/:path*", "/write/:path*"],
 };
