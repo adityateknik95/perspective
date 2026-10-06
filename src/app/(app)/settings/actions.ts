@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { settingsSchema } from "@/lib/validation/profile";
 import { checkRateLimit, rateLimitMessage } from "@/lib/rate-limit";
 import { sniffImageType, SNIFF_BYTES } from "@/lib/image-sniff";
+import { reportError } from "@/lib/monitoring";
 import {
   fieldErrorsFromZod,
   type ActionResult,
@@ -158,12 +159,14 @@ export async function uploadAvatarAction(
     .filter((name) => name !== fileName)
     .map((name) => `${user.id}/${name}`);
   if (listError) {
-    console.error("avatar cleanup: list failed:", listError);
+    await reportError(listError, { context: { op: "avatar-cleanup:list", userId: user.id } });
   } else if (stale.length > 0) {
     const { error: removeError } = await supabase.storage
       .from(AVATAR_BUCKET)
       .remove(stale);
-    if (removeError) console.error("avatar cleanup: remove failed:", removeError);
+    if (removeError) {
+      await reportError(removeError, { context: { op: "avatar-cleanup:remove", userId: user.id } });
+    }
   }
 
   revalidatePath("/settings");

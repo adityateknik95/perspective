@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit, rateLimitMessage } from "@/lib/rate-limit";
+import { reportError } from "@/lib/monitoring";
 import {
   confirmsUsername,
   deleteAccountSchema,
@@ -79,12 +80,14 @@ export async function deleteAccountAction(
       .remove(files.map((f) => `${user.id}/${f.name}`));
     // Not fatal: an orphaned avatar is a cleanup task, a half-deleted
     // account the user can't retry is worse.
-    if (removeError) console.error("delete-account: avatar cleanup failed:", removeError);
+    if (removeError) {
+      await reportError(removeError, { context: { op: "delete-account:avatar-cleanup", userId: user.id } });
+    }
   }
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
   if (deleteError) {
-    console.error("delete-account: deleteUser failed:", deleteError);
+    await reportError(deleteError, { context: { op: "delete-account:deleteUser", userId: user.id } });
     return { ok: false, error: "Couldn't delete your account. Please try again." };
   }
 
