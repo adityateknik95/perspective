@@ -68,6 +68,15 @@ export async function checkRateLimit(
 const UPSTASH_TIMEOUT_MS = 800;
 const KEY_PREFIX = "rl:";
 
+// Keys like `login:email:alice@example.com` or `signup:ip:203.0.113.7`
+// carry personal data, and Upstash is a third-party processor. Counting
+// doesn't need readable keys, so only a SHA-256 of the key leaves the
+// process. (The in-memory fallback never leaves it, so it keeps raw keys.)
+export async function hashKey(key: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 type PipelineReply = Array<{ result?: unknown; error?: string }>;
 
 export async function checkUpstashRateLimit(
@@ -77,7 +86,7 @@ export async function checkUpstashRateLimit(
   { max, windowMs }: RateLimitOptions,
   fetchImpl: typeof fetch = fetch,
 ): Promise<RateLimitResult> {
-  const redisKey = `${KEY_PREFIX}${key}`;
+  const redisKey = `${KEY_PREFIX}${await hashKey(key)}`;
   const res = await fetchImpl(`${url.replace(/\/$/, "")}/pipeline`, {
     method: "POST",
     headers: {
