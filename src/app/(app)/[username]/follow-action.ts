@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { followUsernameSchema } from "@/lib/validation/social";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, rateLimitMessage } from "@/lib/rate-limit";
 import {
   fieldErrorsFromZod,
   type ActionResult,
@@ -63,14 +63,14 @@ export async function followAction(values: {
   const resolved = await resolveTarget(parsed.data.username);
   if (!resolved.ok) return resolved;
 
-  const limit = checkRateLimit(`follow:${resolved.viewerId}`, {
+  const limit = await checkRateLimit(`follow:${resolved.viewerId}`, {
     max: 60,
     windowMs: 60_000,
   });
   if (!limit.ok) {
     return {
       ok: false,
-      error: `Slow down — try again in ${Math.ceil(limit.resetIn / 1000)}s.`,
+      error: rateLimitMessage(limit),
     };
   }
 
@@ -108,14 +108,14 @@ export async function unfollowAction(values: {
   const resolved = await resolveTarget(parsed.data.username);
   if (!resolved.ok) return resolved;
 
-  const limit = checkRateLimit(`follow:${resolved.viewerId}`, {
+  const limit = await checkRateLimit(`follow:${resolved.viewerId}`, {
     max: 60,
     windowMs: 60_000,
   });
   if (!limit.ok) {
     return {
       ok: false,
-      error: `Slow down — try again in ${Math.ceil(limit.resetIn / 1000)}s.`,
+      error: rateLimitMessage(limit),
     };
   }
 

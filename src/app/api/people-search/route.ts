@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, rateLimitMessage } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/request-ip";
 import { isReservedUsername } from "@/lib/reserved-usernames";
 
 // GET /api/people-search?q=ma
@@ -61,17 +62,16 @@ export async function GET(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Rate limit keyed by user when signed in, by IP-derived header otherwise.
-  // The IP-fallback isn't perfect on Vercel (x-forwarded-for can be spoofed
-  // off-platform) but it's a coarse abuse brake — the real protection is
-  // that this endpoint is read-only and idempotent.
+  // Rate limit keyed by user when signed in, by client IP otherwise (see
+  // src/lib/request-ip.ts for how trustworthy that is). It's a coarse abuse
+  // brake — the real protection is that this endpoint is read-only.
   const limitKey = user?.id
     ? `people-search:${user.id}`
-    : `people-search:ip:${request.headers.get("x-forwarded-for")?.split(",")[0] ?? "anon"}`;
-  const limit = checkRateLimit(limitKey, { max: 60, windowMs: 60_000 });
+    : `people-search:ip:${clientIp(request.headers)}`;
+  const limit = await checkRateLimit(limitKey, { max: 60, windowMs: 60_000 });
   if (!limit.ok) {
     return NextResponse.json(
-      { error: `Slow down — try again in ${Math.ceil(limit.resetIn / 1000)}s.` },
+      { error: rateLimitMessage(limit) },
       { status: 429 },
     );
   }

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { setReactionSchema } from "@/lib/validation/social";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, rateLimitMessage } from "@/lib/rate-limit";
 import { isPermissionDenied } from "@/lib/supabase/errors";
 import {
   fieldErrorsFromZod,
@@ -43,14 +43,14 @@ export async function setReactionAction(values: {
     return { ok: false, error: "Sign in to react." };
   }
 
-  const limit = checkRateLimit(`reaction:${user.id}`, {
+  const limit = await checkRateLimit(`reaction:${user.id}`, {
     max: 30,
     windowMs: 60_000,
   });
   if (!limit.ok) {
     return {
       ok: false,
-      error: `Slow down — try again in ${Math.ceil(limit.resetIn / 1000)}s.`,
+      error: rateLimitMessage(limit),
     };
   }
 
