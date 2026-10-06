@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./zod";
 import { usernameSchema } from "./username";
 import {
   LENSES,

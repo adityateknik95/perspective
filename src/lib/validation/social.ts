@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./zod";
 import { REACTION_TYPES } from "@/lib/social/reactions";
 
 // UUIDs are how we reference perspectives, responses, etc on the wire.

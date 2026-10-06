@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./zod";
 import { isReservedUsername } from "@/lib/reserved-usernames";
 
 export const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/;

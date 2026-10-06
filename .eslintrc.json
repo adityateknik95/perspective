@@ -1,3 +1,22 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"]
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "overrides": [
+    {
+      "files": ["src/lib/validation/**/*.ts", "src/components/**/*.tsx"],
+      "excludedFiles": ["src/lib/validation/zod.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "zod",
+                "message": "Import z from \"@/lib/validation/zod\" — it disables zod's eval probe, which our CSP blocks."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }
