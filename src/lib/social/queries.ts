@@ -127,10 +127,13 @@ export async function getResponseThread(
   viewerId: string | null,
   supabase: Supa = createClient(),
 ): Promise<ResponseNode[]> {
+  // Authors come from profile_cards, not profiles: a private profile's row
+  // is hidden by RLS, but their responses on public pieces still need a
+  // name and avatar (0007_profile_privacy.sql).
   const { data: rows, error } = await supabase
     .from("responses")
     .select(
-      "id, perspective_id, user_id, parent_response_id, body, body_plaintext, is_deleted, created_at, updated_at, author:profiles!inner(id, username, display_name, avatar_url)",
+      "id, perspective_id, user_id, parent_response_id, body, body_plaintext, is_deleted, created_at, updated_at, author:profile_cards!responses_user_id_fkey!inner(id, username, display_name, avatar_url)",
     )
     .eq("perspective_id", perspectiveId)
     .order("created_at", { ascending: true });

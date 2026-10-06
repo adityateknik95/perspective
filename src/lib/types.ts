@@ -263,6 +263,14 @@ export interface Database {
             referencedColumns: ["id"];
           },
           {
+            // Same FK, seen through the profile_cards view (0007).
+            foreignKeyName: "responses_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profile_cards";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "responses_parent_response_id_fkey";
             columns: ["parent_response_id"];
             isOneToOne: false;
@@ -427,7 +435,18 @@ export interface Database {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      // 0007_profile_privacy.sql — attribution-only projection of profiles.
+      profile_cards: {
+        Row: {
+          id: string;
+          username: string;
+          display_name: string;
+          avatar_url: string | null;
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       username_available: {
         Args: { u: string };

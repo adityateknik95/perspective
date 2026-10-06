@@ -14,11 +14,13 @@ import { isReservedUsername } from "@/lib/reserved-usernames";
 // follow yourself). Reserved usernames can't be registered, but we also
 // filter them defensively in case the list ever changes.
 //
-// Privacy: profile rows are publicly readable via RLS, so we don't gate
-// the endpoint by auth — anyone can find a username, which matches how
-// /<username> already behaves. Private profiles surface in results so
-// followers can find each other; the row carries an `is_private` flag
-// and the destination page shows the private shell.
+// Privacy: we don't gate the endpoint by auth — anyone can find a public
+// username, which matches how /<username> already behaves. Private
+// profiles do NOT surface: profiles_select_public_or_owner (0001) hides
+// their rows from everyone but the owner, and self is filtered out below,
+// so is_private is always false in practice. The flag stays in the shape
+// so ProfileRow renders correctly if that policy ever widens. Since 0007 a
+// private profile's perspectives are hidden from everyone but the owner too.
 
 const MIN_QUERY = 2;
 const MAX_QUERY = 50;
