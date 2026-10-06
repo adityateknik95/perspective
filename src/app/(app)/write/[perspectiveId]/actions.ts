@@ -12,6 +12,12 @@ import {
 import { sanitizeBodyHtml, htmlToPlaintext } from "@/lib/sanitize-html";
 import { wordCount, readingTimeMinutes } from "@/lib/reading";
 import { writePerspective } from "@/lib/perspectives/writer";
+import { checkRateLimit, rateLimitMessage } from "@/lib/rate-limit";
+
+// Autosave fires at most once per 1.5s debounce while typing (~40/min).
+// 120/min leaves room for multiple tabs and still stops a script from
+// turning the service-role writer into a write amplifier.
+const RATE_AUTOSAVE = { max: 120, windowMs: 60_000 };
 import {
   fieldErrorsFromZod,
   type ActionResult,
@@ -67,6 +73,9 @@ export async function saveDraftAction(
 
   const owner = await getOwnedPerspective(id);
   if (!owner.ok) return owner;
+
+  const limit = await checkRateLimit(`autosave:${owner.user.id}`, RATE_AUTOSAVE);
+  if (!limit.ok) return { ok: false, error: rateLimitMessage(limit) };
 
   if (!owner.perspective.is_draft) {
     return {
