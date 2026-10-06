@@ -6,6 +6,7 @@ import { FilmPoster } from "@/components/film-poster";
 import { Avatar } from "@/components/ui/avatar";
 import { isLens } from "@/lib/lenses";
 import { excerpt as makeExcerpt } from "@/lib/reading";
+import { sanitizeBodyHtml } from "@/lib/sanitize-html";
 import { posterUrl } from "@/lib/tmdb/urls";
 import { cn } from "@/lib/cn";
 import { OwnerActions } from "./owner-actions";
@@ -72,7 +73,11 @@ async function loadPerspective(id: string) {
     userId: data.user_id,
     title: data.title,
     subtitle: data.subtitle,
-    body: data.body,
+    // Sanitize on the way out as well as on the way in. The write path
+    // already runs this allowlist, but rows written before 0006 (or by
+    // anything that ever reaches the table without going through the
+    // server action) must never reach dangerouslySetInnerHTML raw.
+    body: sanitizeBodyHtml(data.body ?? ""),
     bodyPlaintext: data.body_plaintext,
     lensTags: (data.lens_tags ?? []).filter(isLens),
     readingTimeMinutes: data.reading_time_minutes ?? 0,

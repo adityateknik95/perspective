@@ -104,3 +104,38 @@ describe("htmlToPlaintext", () => {
     expect(htmlToPlaintext("   hello   ")).toBe("hello");
   });
 });
+
+// The read view re-sanitizes body at render time. These are payloads a
+// caller could have stored by writing to perspectives.body directly through
+// PostgREST (bypassing the editor and the server action) before 0006 closed
+// that path. Every one must come out inert.
+describe("sanitizeBodyHtml on rows written outside the editor", () => {
+  const payloads: Array<[string, string]> = [
+    ["img onerror", '<img src="x" onerror="alert(1)">'],
+    ["svg onload", '<svg onload="alert(1)"><circle /></svg>'],
+    ["iframe", '<iframe src="https://evil.example"></iframe>'],
+    ["uppercase scheme", '<a href="JAVASCRIPT:alert(1)">x</a>'],
+    ["entity-encoded scheme", '<a href="&#106;avascript:alert(1)">x</a>'],
+    ["whitespace in scheme", '<a href="java\tscript:alert(1)">x</a>'],
+    ["style tag", "<style>body{display:none}</style><p>x</p>"],
+    ["form + input", '<form action="https://evil.example"><input name="p"></form>'],
+    ["object/embed", '<object data="x.swf"></object><embed src="x.swf">'],
+    ["meta refresh", '<meta http-equiv="refresh" content="0;url=https://evil.example">'],
+  ];
+
+  for (const [name, payload] of payloads) {
+    it(`neutralises ${name}`, () => {
+      const out = sanitizeBodyHtml(payload).toLowerCase();
+      expect(out).not.toMatch(/<(script|img|svg|iframe|style|form|input|object|embed|meta)\b/);
+      expect(out).not.toMatch(/\son\w+\s*=/);
+      expect(out).not.toContain("javascript:");
+    });
+  }
+
+  it("is idempotent, so sanitizing already-clean stored HTML is a no-op", () => {
+    const clean = sanitizeBodyHtml(
+      '<p>Hello <a href="https://example.com">there</a></p><h2>Two</h2>',
+    );
+    expect(sanitizeBodyHtml(clean)).toBe(clean);
+  });
+});
