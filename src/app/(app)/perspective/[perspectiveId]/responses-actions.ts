@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createResponseSchema } from "@/lib/validation/social";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, rateLimitMessage } from "@/lib/rate-limit";
 import { isPermissionDenied } from "@/lib/supabase/errors";
 import {
   fieldErrorsFromZod,
@@ -71,11 +71,11 @@ export async function createResponseAction(values: {
   const viewer = await getViewer();
   if (!viewer.ok) return viewer;
 
-  const limit = checkRateLimit(`response:${viewer.viewerId}`, RATE_WRITE);
+  const limit = await checkRateLimit(`response:${viewer.viewerId}`, RATE_WRITE);
   if (!limit.ok) {
     return {
       ok: false,
-      error: `Slow down — try again in ${Math.ceil(limit.resetIn / 1000)}s.`,
+      error: rateLimitMessage(limit),
     };
   }
 
@@ -161,11 +161,11 @@ export async function deleteResponseAction(values: {
   const viewer = await getViewer();
   if (!viewer.ok) return viewer;
 
-  const limit = checkRateLimit(`response:${viewer.viewerId}`, RATE_DELETE);
+  const limit = await checkRateLimit(`response:${viewer.viewerId}`, RATE_DELETE);
   if (!limit.ok) {
     return {
       ok: false,
-      error: `Slow down — try again in ${Math.ceil(limit.resetIn / 1000)}s.`,
+      error: rateLimitMessage(limit),
     };
   }
 
@@ -223,11 +223,11 @@ export async function toggleResonanceAction(values: {
   const viewer = await getViewer();
   if (!viewer.ok) return viewer;
 
-  const limit = checkRateLimit(`resonance:${viewer.viewerId}`, RATE_RESON);
+  const limit = await checkRateLimit(`resonance:${viewer.viewerId}`, RATE_RESON);
   if (!limit.ok) {
     return {
       ok: false,
-      error: `Slow down — try again in ${Math.ceil(limit.resetIn / 1000)}s.`,
+      error: rateLimitMessage(limit),
     };
   }
 

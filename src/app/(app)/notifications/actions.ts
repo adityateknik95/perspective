@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, rateLimitMessage } from "@/lib/rate-limit";
 import {
   fieldErrorsFromZod,
   type ActionResult,
@@ -52,11 +52,11 @@ export async function markAsReadAction(values: {
   const viewer = await getViewer();
   if (!viewer.ok) return viewer;
 
-  const limit = checkRateLimit(`notif:${viewer.viewerId}`, RATE);
+  const limit = await checkRateLimit(`notif:${viewer.viewerId}`, RATE);
   if (!limit.ok) {
     return {
       ok: false,
-      error: `Slow down — try again in ${Math.ceil(limit.resetIn / 1000)}s.`,
+      error: rateLimitMessage(limit),
     };
   }
 
@@ -91,11 +91,11 @@ export async function markAllAsReadAction(): Promise<
   const viewer = await getViewer();
   if (!viewer.ok) return viewer;
 
-  const limit = checkRateLimit(`notif:${viewer.viewerId}`, RATE);
+  const limit = await checkRateLimit(`notif:${viewer.viewerId}`, RATE);
   if (!limit.ok) {
     return {
       ok: false,
-      error: `Slow down — try again in ${Math.ceil(limit.resetIn / 1000)}s.`,
+      error: rateLimitMessage(limit),
     };
   }
 
