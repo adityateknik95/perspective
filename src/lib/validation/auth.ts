@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./zod";
 import { usernameSchema } from "./username";
 
 // Passwords: 8-72 chars (bcrypt truncates anything past 72 bytes).

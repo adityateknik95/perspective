@@ -1,3 +1,5 @@
+import { securityHeaders } from "./security-headers.mjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -5,6 +7,21 @@ const nextConfig = {
     // boot (src/lib/env.ts). Stable in Next 15; opt-in on 14.
     instrumentationHook: true,
   },
+  // CSP + hardening headers on every route; see security-headers.mjs for
+  // what each directive allows and why.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: securityHeaders({
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+          isDev: process.env.NODE_ENV !== "production",
+        }),
+      },
+    ];
+  },
+  // Don't advertise the framework in every response.
+  poweredByHeader: false,
   images: {
     // Avatars are served from the Supabase Storage CDN. Project-specific
     // hostnames look like <project-ref>.supabase.co.

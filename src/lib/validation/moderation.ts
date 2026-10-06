@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./zod";
 
 // Shared between the admin page (client buttons) and its server actions.
 export const moderationTargetSchema = z.object({
