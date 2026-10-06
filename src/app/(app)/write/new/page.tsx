@@ -55,19 +55,15 @@ export default async function NewPerspectivePage({ searchParams }: PageProps) {
   // Insert a draft row and send the user to the editor. We never collapse
   // duplicate empty drafts on the same film — making a second draft is
   // cheap, and collapsing would risk blowing away the half-typed one.
+  //
+  // Only user_id and film_id are sent: since 0006 those are the only
+  // columns the browser role may INSERT, and every other column's default
+  // is exactly an empty, public-when-shared draft.
   const { data: draft, error } = await supabase
     .from("perspectives")
     .insert({
       user_id: user.id,
       film_id: entry.film.id,
-      title: "",
-      body: "",
-      body_plaintext: "",
-      lens_tags: [],
-      word_count: 0,
-      reading_time_minutes: 0,
-      is_draft: true,
-      is_private: false,
     })
     .select("id")
     .single();

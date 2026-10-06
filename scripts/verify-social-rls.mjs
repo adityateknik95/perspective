@@ -436,6 +436,102 @@ console.log("\nRunning RLS smoke test...");
   );
 }
 
+// --- 0006: perspective write guards ----------------------------------------
+//
+// Every check below calls PostgREST directly with a user's JWT — exactly what
+// anyone holding the public anon key can do — so none of it goes through a
+// server action. "Denied" means Postgres refused the write (42501 for a
+// column privilege), not that the app chose not to send it.
+
+function denied(name, { error }, extra = "") {
+  check(name, !!error, error ? `blocked (${error.code})${extra}` : "UNEXPECTEDLY ALLOWED");
+}
+
+console.log("\n0006 perspective write guards...");
+
+for (const [col, value] of [
+  ["body", "<img src=x onerror=alert(1)>"],
+  ["body_plaintext", "forged"],
+  ["word_count", 99999],
+  ["reading_time_minutes", 999],
+  ["is_draft", true],
+  ["published_at", "2001-01-01T00:00:00Z"],
+  ["title", "retitled after publish"],
+  ["lens_tags", ["grief"]],
+]) {
+  denied(
+    `owner A cannot UPDATE perspectives.${col} directly`,
+    await A.from("perspectives").update({ [col]: value }).eq("id", perspectiveId).select("id"),
+  );
+}
+
+{
+  const res = await A.from("perspectives")
+    .update({ is_private: false })
+    .eq("id", perspectiveId)
+    .select("id");
+  check(
+    "owner A can still toggle is_private",
+    !res.error && res.data?.length === 1,
+    res.error?.message ?? `${res.data?.length} rows`,
+  );
+}
+
+denied(
+  "A cannot INSERT a perspective born published with a body",
+  await A.from("perspectives").insert({
+    user_id: aId,
+    film_id: film.id,
+    title: "x",
+    body: "<script>alert(1)</script>",
+    lens_tags: ["memory"],
+    is_draft: false,
+    published_at: new Date().toISOString(),
+  }),
+);
+
+{
+  const res = await A.from("perspectives")
+    .insert({ user_id: aId, film_id: film.id })
+    .select("id, is_draft, body, title")
+    .single();
+  const ok =
+    !res.error && res.data.is_draft === true && res.data.body === "" && res.data.title === "";
+  check(
+    "A can INSERT an empty draft with only user_id + film_id",
+    ok,
+    res.error?.message ?? JSON.stringify(res.data),
+  );
+  if (res.data) await admin.from("perspectives").delete().eq("id", res.data.id);
+}
+
+denied(
+  "published_at is write-once, even for the service role",
+  await admin
+    .from("perspectives")
+    .update({ published_at: "2001-01-01T00:00:00Z" })
+    .eq("id", perspectiveId)
+    .select("id"),
+);
+
+{
+  const res = await admin
+    .from("perspectives")
+    .update({ body: "<p>server-written</p>", is_draft: true })
+    .eq("id", perspectiveId)
+    .select("id");
+  check(
+    "service role (the server writer) can still write body / is_draft",
+    !res.error && res.data?.length === 1,
+    res.error?.message,
+  );
+  // Restore published state for the checks that follow.
+  await admin
+    .from("perspectives")
+    .update({ is_draft: false })
+    .eq("id", perspectiveId);
+}
+
 // --- Cleanup -------------------------------------------------------------------
 
 console.log("\nCleaning up...");
