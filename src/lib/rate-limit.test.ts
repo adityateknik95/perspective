@@ -3,6 +3,7 @@ import {
   checkMemoryRateLimit,
   checkRateLimit,
   checkUpstashRateLimit,
+  hashKey,
   rateLimitMessage,
   __resetRateLimits,
 } from "./rate-limit";
@@ -118,15 +119,24 @@ describe("checkUpstashRateLimit (shared store)", () => {
   it("sends INCR + PEXPIRE NX + PTTL as one authenticated pipeline", async () => {
     const fake = fakeUpstash();
     await checkUpstashRateLimit("https://x.upstash.io/", "tok", "login:1.2.3.4", OPTS, fake.impl);
+    const key = `rl:${await hashKey("login:1.2.3.4")}`;
     expect(fake.requests[0]).toEqual({
       url: "https://x.upstash.io/pipeline",
       auth: "Bearer tok",
       cmds: [
-        ["INCR", "rl:login:1.2.3.4"],
-        ["PEXPIRE", "rl:login:1.2.3.4", "1000", "NX"],
-        ["PTTL", "rl:login:1.2.3.4"],
+        ["INCR", key],
+        ["PEXPIRE", key, "1000", "NX"],
+        ["PTTL", key],
       ],
     });
+  });
+
+  it("never sends personal data in keys (emails / IPs are hashed)", async () => {
+    const fake = fakeUpstash();
+    await checkUpstashRateLimit("https://x", "t", "login:email:alice@example.com", OPTS, fake.impl);
+    const sent = JSON.stringify(fake.requests);
+    expect(sent).not.toContain("alice");
+    expect(sent).toMatch(/rl:[0-9a-f]{64}/);
   });
 
   it("allows up to max, then rejects with the remaining TTL", async () => {
