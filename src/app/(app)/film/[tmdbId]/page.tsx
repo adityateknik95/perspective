@@ -14,6 +14,7 @@ import { excerpt as makeExcerpt } from "@/lib/reading";
 import { isLens, LENSES, type Lens } from "@/lib/lenses";
 import { getReactionSummariesFor } from "@/lib/social/queries";
 import { cn } from "@/lib/cn";
+import { TmdbAttribution } from "@/components/tmdb/tmdb-attribution";
 
 interface PageProps {
   params: { tmdbId: string };
@@ -251,6 +252,8 @@ export default async function FilmPage({ params, searchParams }: PageProps) {
               {film.overview}
             </p>
           )}
+
+          <TmdbAttribution variant="film" className="mt-8 max-w-prose" />
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import { AppHeader } from "@/components/layout/app-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 
 // Wraps every authenticated-shell route (and public profile pages) with the
 // shared header. Route-specific gating (e.g. onboarding, settings) is handled
@@ -12,6 +13,7 @@ export default function AppLayout({
     <div className="flex min-h-screen flex-col">
       <AppHeader />
       <main className="flex-1">{children}</main>
+      <SiteFooter />
     </div>
   );
 }
