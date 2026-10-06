@@ -14,6 +14,7 @@
 //   0010  avatar_url not browser-writable and pinned to the owner's folder
 //   0011  deleting a user keeps other people's replies under their responses
 //   0012  reports need a visible target; hidden content; masked response bodies
+//   0013  the app's un-hinted profile embeds stay unambiguous
 //
 // Usage:
 //   node --env-file=.env.local scripts/verify-social-rls.mjs
@@ -1067,6 +1068,29 @@ console.log("\n0012 moderation...");
   await admin.from("responses").delete().in("id", [live, deleted, hiddenResp]);
   await admin.from("perspectives").delete().in("id", [draft, target]);
   await admin.from("reports").delete().eq("reporter_id", bId);
+}
+
+// --- 0013: un-hinted profile embeds keep working ------------------------------
+//
+// The app embeds the author as `profiles!inner(...)` from perspectives and
+// `profile_cards` from responses. A second FK from those tables to profiles
+// makes such embeds ambiguous (PGRST201) and silently empties every page
+// that uses them — 0012's hidden_by did exactly that. Pin the shapes the
+// app actually sends.
+
+console.log("\n0013 embed shapes...");
+{
+  for (const [label, select] of [
+    ["read view", "id, author:profiles!inner(id, username, display_name, avatar_url), film:films!inner(id)"],
+    ["film / lens / following lists", "id, profiles!inner(username, display_name, avatar_url)"],
+  ]) {
+    const { data, error } = await anon.from("perspectives").select(select).eq("id", perspectiveId);
+    check(
+      `anon perspectives embed works: ${label}`,
+      !error && data?.length === 1,
+      error ? `${error.code} ${error.message}` : `${data?.length} rows`,
+    );
+  }
 }
 
 // --- Cleanup -------------------------------------------------------------------
