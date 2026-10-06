@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 import { getOrCreateFilmByTmdbId } from "@/lib/films";
+import { clientIp } from "@/lib/request-ip";
 import { FilmPoster } from "@/components/film-poster";
 import { PerspectiveCard, type PerspectiveCardData } from "@/components/perspective-card";
 import { buttonClassName } from "@/components/ui/button";
@@ -23,8 +25,8 @@ const PAGE_SIZE = 10;
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const tmdbId = Number(params.tmdbId);
   if (!Number.isInteger(tmdbId)) return { title: "Film not found" };
-  const entry = await getOrCreateFilmByTmdbId(tmdbId);
-  if (!entry) return { title: "Film not found" };
+  const entry = await getOrCreateFilmByTmdbId(tmdbId, clientIp(headers()));
+  if (!entry.ok) return { title: "Film not found" };
   const year = entry.film.year ? ` (${entry.film.year})` : "";
   return {
     title: `${entry.film.title}${year}`,
@@ -36,8 +38,22 @@ export default async function FilmPage({ params, searchParams }: PageProps) {
   const tmdbId = Number(params.tmdbId);
   if (!Number.isInteger(tmdbId) || tmdbId <= 0) notFound();
 
-  const entry = await getOrCreateFilmByTmdbId(tmdbId);
-  if (!entry) notFound();
+  const entry = await getOrCreateFilmByTmdbId(tmdbId, clientIp(headers()));
+  if (!entry.ok) {
+    if (entry.reason === "rate_limited") {
+      // Not a 404: the film may well exist; we're just not fetching new
+      // ones for this visitor right now (see src/lib/films.ts).
+      return (
+        <div className="mx-auto max-w-reading px-4 py-16 sm:px-6">
+          <EmptyState
+            title="One moment."
+            body="We're looking up a lot of new films right now. Try this page again in a few minutes."
+          />
+        </div>
+      );
+    }
+    notFound();
+  }
 
   const { film } = entry;
   const supabase = createClient();

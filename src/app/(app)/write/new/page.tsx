@@ -47,9 +47,14 @@ export default async function NewPerspectivePage({ searchParams }: PageProps) {
     return <StartForm />;
   }
 
-  const entry = await getOrCreateFilmByTmdbId(tmdbId);
-  if (!entry) {
-    return <StartForm />;
+  // Keyed by user here (signed in), by IP on the public film page.
+  const entry = await getOrCreateFilmByTmdbId(tmdbId, `user:${user.id}`);
+  if (!entry.ok) {
+    return entry.reason === "rate_limited" ? (
+      <StartForm error="Too many new films at once. Try again in a few minutes." />
+    ) : (
+      <StartForm />
+    );
   }
 
   // Insert a draft row and send the user to the editor. We never collapse
