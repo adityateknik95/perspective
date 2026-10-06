@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createResponseSchema } from "@/lib/validation/social";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isPermissionDenied } from "@/lib/supabase/errors";
 import {
   fieldErrorsFromZod,
   type ActionResult,
@@ -97,9 +98,9 @@ export async function createResponseAction(values: {
   }
 
   // One-level nesting: if the caller passed a parent, look it up and make
-  // sure it's a top-level response. Also verify it belongs to the same
-  // perspective so a malicious caller can't graft replies onto unrelated
-  // threads.
+  // sure it's a top-level response on the same perspective. The database
+  // enforces both (response_parent_ok, 0008); checking here first gives the
+  // caller a specific message instead of a generic rejection.
   if (parsed.data.parentResponseId) {
     const { data: parent, error: parentErr } = await supabase
       .from("responses")
@@ -131,6 +132,10 @@ export async function createResponseAction(values: {
     .select("id")
     .single();
 
+  // responses_insert_self (0008) re-checks visibility and the parent rule.
+  if (isPermissionDenied(insertErr)) {
+    return { ok: false, error: "You can't respond to this perspective." };
+  }
   if (insertErr) return { ok: false, error: insertErr.message };
 
   revalidatePath(`/perspective/${parsed.data.perspectiveId}`);
@@ -266,6 +271,11 @@ export async function toggleResonanceAction(values: {
       response_id: parsed.data.responseId,
       user_id: viewer.viewerId,
     });
+  // response_resonances_insert_self (0008): the response's piece went
+  // private or the response was removed since the lookup above.
+  if (isPermissionDenied(error)) {
+    return { ok: false, error: "Can't resonate with this response." };
+  }
   // Duplicate-key collisions happen if a second tab beat us to it; treat
   // as success — the end state matches what the caller asked for.
   if (error && !error.message.toLowerCase().includes("duplicate")) {
