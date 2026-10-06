@@ -7,7 +7,6 @@ import { Avatar } from "@/components/ui/avatar";
 import { isLens } from "@/lib/lenses";
 import { excerpt as makeExcerpt } from "@/lib/reading";
 import { sanitizeBodyHtml } from "@/lib/sanitize-html";
-import { posterUrl } from "@/lib/tmdb/urls";
 import { cn } from "@/lib/cn";
 import { OwnerActions } from "./owner-actions";
 import {
@@ -99,7 +98,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!p) return { title: "Perspective not found" };
 
   const description = makeExcerpt(p.bodyPlaintext ?? "", 28);
-  const poster = posterUrl(p.film.poster_path, "w500");
 
   return {
     title: `${p.title} — ${p.author.display_name || p.author.username}`,
@@ -108,14 +106,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       type: "article",
       title: p.title,
       description,
-      ...(poster ? { images: [{ url: poster, width: 500, height: 750 }] } : {}),
+      // images come from opengraph-image.tsx / twitter-image.tsx.
       authors: [p.author.display_name || p.author.username],
     },
     twitter: {
       card: "summary_large_image",
       title: p.title,
       description,
-      ...(poster ? { images: [poster] } : {}),
     },
     // Drafts and private pieces: even if someone with the URL reaches them,
     // don't let them leak into search indexes.
