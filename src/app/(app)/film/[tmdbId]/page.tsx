@@ -71,7 +71,8 @@ export default async function FilmPage({ params, searchParams }: PageProps) {
     .select("lens_tags")
     .eq("film_id", film.id)
     .eq("is_draft", false)
-    .eq("is_private", false);
+    .eq("is_private", false)
+    .is("hidden_at", null);
 
   const published = allPublished ?? [];
   const totalPerspectives = published.length;
@@ -101,6 +102,7 @@ export default async function FilmPage({ params, searchParams }: PageProps) {
     .eq("film_id", film.id)
     .eq("is_draft", false)
     .eq("is_private", false)
+    .is("hidden_at", null)
     .order("published_at", { ascending: false })
     .limit(PAGE_SIZE + 1);
 

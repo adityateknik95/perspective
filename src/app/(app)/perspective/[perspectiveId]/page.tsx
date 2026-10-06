@@ -21,6 +21,7 @@ import {
 import { REACTION_ICONS } from "@/lib/social/reaction-icons";
 import { ReactionPicker } from "@/components/reactions/reaction-picker";
 import { ResponsesSection } from "@/components/responses/responses-section";
+import { ReportButton } from "@/components/moderation/report-button";
 
 // UUIDs are 36 chars with 4 hyphens. Cheap reject for random garbage in the
 // URL — saves a DB round-trip and a misleading 404.
@@ -45,7 +46,7 @@ async function loadPerspective(id: string) {
   const { data, error } = await supabase
     .from("perspectives")
     .select(
-      "id, user_id, title, subtitle, body, body_plaintext, lens_tags, reading_time_minutes, is_draft, is_private, published_at, film:films!inner(id, tmdb_id, title, year, director, poster_path), author:profiles!inner(id, username, display_name, avatar_url)",
+      "id, user_id, title, subtitle, body, body_plaintext, lens_tags, reading_time_minutes, is_draft, is_private, published_at, hidden_at, film:films!inner(id, tmdb_id, title, year, director, poster_path), author:profiles!inner(id, username, display_name, avatar_url)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -83,6 +84,9 @@ async function loadPerspective(id: string) {
     readingTimeMinutes: data.reading_time_minutes ?? 0,
     isDraft: data.is_draft,
     isPrivate: data.is_private,
+    // Hidden by moderation (0012). RLS already hides the row from everyone
+    // but the author; the flag drives the author-facing notice.
+    isHidden: data.hidden_at !== null,
     publishedAt: data.published_at,
     film,
     author,
@@ -116,7 +120,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     // Drafts and private pieces: even if someone with the URL reaches them,
     // don't let them leak into search indexes.
     robots:
-      p.isDraft || p.isPrivate
+      p.isDraft || p.isPrivate || p.isHidden
         ? { index: false, follow: false }
         : undefined,
   };
@@ -141,11 +145,14 @@ export default async function PerspectivePage({ params }: PageProps) {
     await Promise.all([
       getReactionSummary(p.id, supabase),
       getViewerReaction(p.id, viewerId, supabase),
+      // "id", not "*": since 0012 the browser role can't SELECT response
+      // bodies, and "*" would ask for them.
       supabase
         .from("responses")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("perspective_id", p.id)
-        .eq("is_deleted", false),
+        .eq("is_deleted", false)
+        .is("hidden_at", null),
       // Previous perspective by the same author — powers the "Next" footer.
       // Ordered by published_at desc, so "previous" means "older piece".
       supabase
@@ -169,7 +176,8 @@ export default async function PerspectivePage({ params }: PageProps) {
   // Drafts and private pieces don't take public reactions. Authors can still
   // self-react on their own private/published pieces — useful for testing
   // the picker, harmless otherwise. The picker is hidden on drafts entirely.
-  const showReactionPicker = !p.isDraft && (!p.isPrivate || p.isOwner);
+  const showReactionPicker =
+    !p.isDraft && !p.isHidden && (!p.isPrivate || p.isOwner);
   const signInHref = `/login?next=${encodeURIComponent(`/perspective/${p.id}`)}`;
 
   return (
@@ -253,6 +261,16 @@ export default async function PerspectivePage({ params }: PageProps) {
         </nav>
       )}
 
+      {/* Moderation notice — only the author can load a hidden piece. */}
+      {p.isOwner && p.isHidden && (
+        <div className="mt-6 border-l-2 border-wine bg-cream-deep/60 px-4 py-3 font-mono text-meta-sm uppercase text-wine">
+          Hidden by moderation
+          <span className="ml-2 normal-case tracking-normal font-body text-reading-sm text-ink-soft">
+            {"\u2014 a moderator hid this piece after a report. Only you can see it."}
+          </span>
+        </div>
+      )}
+
       {/* Status strip — only for the author on a draft / private piece */}
       {p.isOwner && (p.isDraft || p.isPrivate) && (
         <div className="mt-6 border-l-2 border-wine bg-cream-deep/60 px-4 py-3 font-mono text-meta-sm uppercase text-ink">
@@ -333,6 +351,18 @@ export default async function PerspectivePage({ params }: PageProps) {
       {showReactionPicker && (
         <div id="responses" className="scroll-mt-16">
           <ResponsesSection perspectiveId={p.id} />
+        </div>
+      )}
+
+      {/* Report — signed-in readers only see it on pieces that aren't theirs. */}
+      {!p.isOwner && !p.isDraft && (
+        <div className="mt-10 flex justify-end">
+          <ReportButton
+            targetType="perspective"
+            targetId={p.id}
+            isSignedIn={!!viewerId}
+            signInHref={signInHref}
+          />
         </div>
       )}
 

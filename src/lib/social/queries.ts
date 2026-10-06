@@ -105,6 +105,9 @@ export type ResponseNode = {
   body: string;
   body_plaintext: string;
   is_deleted: boolean;
+  // Hidden by moderation (0012). Readers get no body or author for it; its
+  // author still gets both, to show it flagged.
+  is_hidden: boolean;
   created_at: string;
   updated_at: string;
   author: {
@@ -119,26 +122,23 @@ export type ResponseNode = {
 };
 
 // Fetch all responses on a perspective and assemble the two-level tree.
-// Returns top-level responses with `replies` attached. Soft-deleted rows
-// are kept in the tree so the structure renders intact — UI substitutes
-// "[removed]" for the body.
+// Returns top-level responses with `replies` attached. Removed rows (deleted
+// by their author, hidden by moderation, or detached from a deleted account)
+// stay in the tree so the structure renders intact.
+//
+// Reads through get_response_thread() (0012), not the responses table: the
+// browser role can't SELECT response bodies directly any more, so a removed
+// response's text can't be read back through PostgREST. The function
+// returns body and author as NULL for anything the viewer shouldn't see,
+// and keeps both for the author of a hidden response, who sees it flagged.
 export async function getResponseThread(
   perspectiveId: string,
   viewerId: string | null,
   supabase: Supa = createClient(),
 ): Promise<ResponseNode[]> {
-  // Authors come from profile_cards, not profiles: a private profile's row
-  // is hidden by RLS, but their responses on public pieces still need a
-  // name and avatar (0007_profile_privacy.sql). Not !inner: a response
-  // detached from a deleted account (0011) has no author and must still
-  // hold its place in the thread, rendered as "Removed".
-  const { data: rows, error } = await supabase
-    .from("responses")
-    .select(
-      "id, perspective_id, user_id, parent_response_id, body, body_plaintext, is_deleted, created_at, updated_at, author:profile_cards!responses_user_id_fkey(id, username, display_name, avatar_url)",
-    )
-    .eq("perspective_id", perspectiveId)
-    .order("created_at", { ascending: true });
+  const { data: rows, error } = await supabase.rpc("get_response_thread", {
+    p_perspective_id: perspectiveId,
+  });
 
   if (error) {
     console.error("getResponseThread failed:", error);
@@ -153,21 +153,22 @@ export async function getResponseThread(
 
   const nodes = new Map<string, ResponseNode>();
   for (const r of rows ?? []) {
-    const author = Array.isArray(r.author) ? r.author[0] : r.author;
     nodes.set(r.id, {
       id: r.id,
       perspective_id: r.perspective_id,
       parent_response_id: r.parent_response_id,
-      body: r.body,
-      body_plaintext: r.body_plaintext,
+      // body === body_plaintext for v1 responses (plain text only).
+      body: r.body ?? "",
+      body_plaintext: r.body ?? "",
       is_deleted: r.is_deleted,
+      is_hidden: r.is_hidden,
       created_at: r.created_at,
       updated_at: r.updated_at,
       author: {
-        id: author?.id ?? "",
-        username: author?.username ?? "",
-        display_name: author?.display_name ?? "",
-        avatar_url: author?.avatar_url ?? null,
+        id: r.author_id ?? "",
+        username: r.author_username ?? "",
+        display_name: r.author_display_name ?? "",
+        avatar_url: r.author_avatar_url ?? null,
       },
       resonance_count: resCounts.get(r.id) ?? 0,
       viewer_resonated: viewerResonates.has(r.id),

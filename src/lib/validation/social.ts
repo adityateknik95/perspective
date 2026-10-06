@@ -74,3 +74,22 @@ export const createReportSchema = z.object({
 });
 
 export type CreateReportInput = z.infer<typeof createReportSchema>;
+
+// -----------------------------------------------------------------------------
+// Reports
+// -----------------------------------------------------------------------------
+
+// Mirrors the DB CHECKs on reports (target_type enum, reason 1-500 chars).
+export const REPORT_REASON_MAX = 500;
+
+export const reportSchema = z.object({
+  targetType: z.enum(["perspective", "response"]),
+  targetId: uuid,
+  reason: z
+    .string()
+    .trim()
+    .min(1, "Tell us what's wrong.")
+    .max(REPORT_REASON_MAX, `${REPORT_REASON_MAX} characters max.`),
+});
+
+export type ReportInput = z.infer<typeof reportSchema>;

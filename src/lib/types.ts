@@ -98,6 +98,9 @@ export interface Database {
           is_draft: boolean;
           is_private: boolean;
           published_at: string | null;
+          // 0012 moderation
+          hidden_at: string | null;
+          hidden_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -115,6 +118,8 @@ export interface Database {
           is_draft?: boolean;
           is_private?: boolean;
           published_at?: string | null;
+          hidden_at?: string | null;
+          hidden_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -132,6 +137,8 @@ export interface Database {
           is_draft?: boolean;
           is_private?: boolean;
           published_at?: string | null;
+          hidden_at?: string | null;
+          hidden_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -223,6 +230,9 @@ export interface Database {
           body: string;
           body_plaintext: string;
           is_deleted: boolean;
+          // 0012 moderation
+          hidden_at: string | null;
+          hidden_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -234,6 +244,8 @@ export interface Database {
           body: string;
           body_plaintext: string;
           is_deleted?: boolean;
+          hidden_at?: string | null;
+          hidden_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -245,6 +257,8 @@ export interface Database {
           body?: string;
           body_plaintext?: string;
           is_deleted?: boolean;
+          hidden_at?: string | null;
+          hidden_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -416,6 +430,10 @@ export interface Database {
           target_id: string;
           reason: string;
           created_at: string;
+          // 0012
+          status: "open" | "actioned" | "dismissed";
+          resolved_at: string | null;
+          resolved_by: string | null;
         };
         Insert: {
           id?: string;
@@ -432,6 +450,9 @@ export interface Database {
           target_id?: string;
           reason?: string;
           created_at?: string;
+          status?: "open" | "actioned" | "dismissed";
+          resolved_at?: string | null;
+          resolved_by?: string | null;
         };
         Relationships: [];
       };
@@ -482,6 +503,24 @@ export interface Database {
         }>;
       };
       // 0009: the viewer comes from auth.uid(); there is no user-id arg.
+      // 0012: response thread with bodies masked for deleted / hidden rows.
+      get_response_thread: {
+        Args: { p_perspective_id: string };
+        Returns: Array<{
+          id: string;
+          perspective_id: string;
+          parent_response_id: string | null;
+          body: string | null;
+          is_deleted: boolean;
+          is_hidden: boolean;
+          created_at: string;
+          updated_at: string;
+          author_id: string | null;
+          author_username: string | null;
+          author_display_name: string | null;
+          author_avatar_url: string | null;
+        }>;
+      };
       get_feed_for_user: {
         Args: {
           p_cursor_published_at?: string | null;

@@ -68,6 +68,7 @@ export async function FollowingTab({ viewerId }: FollowingTabProps) {
     .in("user_id", followedIds)
     .eq("is_draft", false)
     .eq("is_private", false)
+    .is("hidden_at", null)
     .order("published_at", { ascending: false })
     .limit(PAGE_LIMIT);
 

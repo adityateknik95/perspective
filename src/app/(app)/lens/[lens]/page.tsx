@@ -90,6 +90,7 @@ export default async function LensPage({ params, searchParams }: PageProps) {
     .contains("lens_tags", [lens])
     .eq("is_draft", false)
     .eq("is_private", false)
+    .is("hidden_at", null)
     .order("published_at", { ascending: false })
     .limit(PAGE_SIZE + 1);
 
