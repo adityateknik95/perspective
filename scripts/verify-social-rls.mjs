@@ -539,6 +539,76 @@ denied(
     .eq("id", perspectiveId);
 }
 
+// --- 0007: profile privacy ---------------------------------------------------
+
+console.log("\n0007 profile privacy...");
+
+// B leaves a response on A's public piece (seeded via admin so this section
+// doesn't depend on 0008's insert rules), then both profiles go private.
+const { data: bResponse } = await admin
+  .from("responses")
+  .insert({
+    perspective_id: perspectiveId,
+    user_id: bId,
+    body: "a response from B",
+    body_plaintext: "a response from B",
+  })
+  .select("id")
+  .single();
+
+await admin.from("profiles").update({ is_private: true }).in("id", [aId, bId]);
+
+for (const [who, client] of [["anon", anon], ["B", B]]) {
+  const { data, error } = await client
+    .from("perspectives")
+    .select("id")
+    .eq("id", perspectiveId);
+  check(
+    `${who} cannot SELECT a private profile's published perspective`,
+    !error && (data?.length ?? 0) === 0,
+    error?.message ?? `${data?.length ?? 0} rows`,
+  );
+}
+{
+  const { data } = await A.from("perspectives").select("id").eq("id", perspectiveId);
+  check("owner A still sees own perspective while private", data?.length === 1);
+}
+{
+  // A is private and has no responses anywhere → no card for anyone else.
+  const { data } = await anon.from("profile_cards").select("id").eq("id", aId);
+  check(
+    "profile_cards does not expose a private profile with no visible responses",
+    (data?.length ?? 1) === 0,
+    `${data?.length} rows`,
+  );
+}
+
+// Make A public again so B's response sits on a visible piece.
+await admin.from("profiles").update({ is_private: false }).eq("id", aId);
+{
+  const { data, error } = await anon
+    .from("responses")
+    .select("id, author:profile_cards!responses_user_id_fkey!inner(username, display_name)")
+    .eq("id", bResponse.id);
+  const author = data?.[0]?.author;
+  check(
+    "private B's response on a public piece still shows name (profile_cards)",
+    !error && author?.username === bUsername,
+    error?.message ?? JSON.stringify(data),
+  );
+}
+{
+  const { data } = await anon.from("profiles").select("id").eq("id", bId);
+  check(
+    "private B's full profile row stays hidden",
+    (data?.length ?? 1) === 0,
+    `${data?.length} rows`,
+  );
+}
+
+await admin.from("profiles").update({ is_private: false }).eq("id", bId);
+await admin.from("responses").delete().eq("id", bResponse.id);
+
 // --- Cleanup -------------------------------------------------------------------
 
 console.log("\nCleaning up...");
