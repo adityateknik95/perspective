@@ -609,6 +609,192 @@ await admin.from("profiles").update({ is_private: false }).eq("id", aId);
 await admin.from("profiles").update({ is_private: false }).eq("id", bId);
 await admin.from("responses").delete().eq("id", bResponse.id);
 
+// --- 0008: social visibility -------------------------------------------------
+
+console.log("\n0008 social visibility...");
+
+// Fixtures, all authored by A and seeded via admin:
+//   draftId    — a draft
+//   privateId  — published but is_private
+//   otherId    — a second public piece (for cross-thread grafting)
+async function seedPerspective(extra) {
+  const { data, error } = await admin
+    .from("perspectives")
+    .insert({
+      user_id: aId,
+      film_id: film.id,
+      title: "fixture",
+      body: "<p>x</p>",
+      body_plaintext: "x",
+      lens_tags: ["memory"],
+      ...extra,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id;
+}
+const draftId = await seedPerspective({ is_draft: true });
+const privateId = await seedPerspective({
+  is_draft: false,
+  is_private: true,
+  published_at: new Date().toISOString(),
+});
+const otherId = await seedPerspective({
+  is_draft: false,
+  published_at: new Date().toISOString(),
+});
+// A second private piece nobody has touched, so the "re-point" check below
+// can only fail on RLS, never on the (user, perspective) unique key.
+const private2Id = await seedPerspective({
+  is_draft: false,
+  is_private: true,
+  published_at: new Date().toISOString(),
+});
+const seeded = [draftId, privateId, otherId, private2Id];
+
+// Reactions ------------------------------------------------------------------
+denied(
+  "B cannot react to A's draft",
+  await B.from("reactions").insert({ user_id: bId, perspective_id: draftId, reaction_type: "moved" }),
+);
+denied(
+  "B cannot react to A's private piece",
+  await B.from("reactions").insert({ user_id: bId, perspective_id: privateId, reaction_type: "moved" }),
+);
+{
+  const { error } = await A.from("reactions").insert({
+    user_id: aId,
+    perspective_id: draftId,
+    reaction_type: "moved",
+  });
+  check("owner A can react to own draft", !error, error?.message);
+}
+{
+  // B's existing reaction on the public piece; try to re-point it.
+  const { data, error } = await B.from("reactions")
+    .update({ perspective_id: private2Id })
+    .eq("user_id", bId)
+    .eq("perspective_id", perspectiveId)
+    .select("id");
+  check(
+    "B cannot re-point a reaction at a private piece",
+    error?.code === "42501" || (!error && (data?.length ?? 0) === 0),
+    error ? `${error.code} ${error.message}` : `${data?.length} rows`,
+  );
+}
+{
+  await admin
+    .from("reactions")
+    .insert({ user_id: aId, perspective_id: privateId, reaction_type: "moved" });
+  const pub = await anon.from("reactions").select("id").eq("perspective_id", privateId);
+  const asB = await B.from("reactions").select("id").eq("perspective_id", privateId);
+  const asA = await A.from("reactions").select("id").eq("perspective_id", privateId);
+  check(
+    "reactions on a private piece are hidden from anon and B, visible to A",
+    pub.data?.length === 0 && asB.data?.length === 0 && asA.data?.length === 1,
+    `anon=${pub.data?.length} B=${asB.data?.length} A=${asA.data?.length}`,
+  );
+  const { data: summary } = await B.rpc("get_perspective_reaction_summary", {
+    p_perspective_id: privateId,
+  });
+  check("reaction summary RPC reports 0 on a hidden piece", summary?.total === 0, JSON.stringify(summary));
+}
+{
+  await admin.from("profiles").update({ is_private: true }).eq("id", aId);
+  denied(
+    "B cannot react to a piece by a now-private profile",
+    await B.from("reactions").upsert(
+      { user_id: bId, perspective_id: otherId, reaction_type: "moved" },
+      { onConflict: "perspective_id,user_id" },
+    ),
+  );
+  await admin.from("profiles").update({ is_private: false }).eq("id", aId);
+}
+
+// Responses ------------------------------------------------------------------
+const respond = (client, userId, perspective, parent, body = "hello") =>
+  client
+    .from("responses")
+    .insert({
+      perspective_id: perspective,
+      user_id: userId,
+      parent_response_id: parent,
+      body,
+      body_plaintext: body,
+    })
+    .select("id")
+    .single();
+
+denied("B cannot respond to A's draft", await respond(B, bId, draftId, null));
+denied("B cannot respond to A's private piece", await respond(B, bId, privateId, null));
+
+const top = await respond(B, bId, perspectiveId, null, "top-level");
+check("B can respond to a public piece", !top.error, top.error?.message);
+const otherTop = await respond(B, bId, otherId, null, "top-level elsewhere");
+
+denied(
+  "B cannot graft a reply onto a parent from another perspective",
+  await respond(B, bId, perspectiveId, otherTop.data.id),
+);
+const reply = await respond(B, bId, perspectiveId, top.data.id, "a reply");
+check("B can reply to a top-level response", !reply.error, reply.error?.message);
+denied(
+  "B cannot reply to a reply",
+  await respond(B, bId, perspectiveId, reply.data.id),
+);
+denied(
+  "B cannot move a response to another perspective",
+  await B.from("responses").update({ perspective_id: otherId }).eq("id", top.data.id).select("id"),
+);
+denied(
+  "B cannot forge created_at on insert",
+  await B.from("responses").insert({
+    perspective_id: perspectiveId,
+    user_id: bId,
+    body: "x",
+    body_plaintext: "x",
+    created_at: "2001-01-01T00:00:00Z",
+  }),
+);
+
+// Resonances -----------------------------------------------------------------
+{
+  const { data: privResp } = await admin
+    .from("responses")
+    .insert({ perspective_id: privateId, user_id: aId, body: "p", body_plaintext: "p" })
+    .select("id")
+    .single();
+  denied(
+    "B cannot resonate with a response on a private piece",
+    await B.from("response_resonances").insert({ response_id: privResp.id, user_id: bId }),
+  );
+  await admin.from("response_resonances").insert({ response_id: privResp.id, user_id: aId });
+  const pub = await anon.from("response_resonances").select("user_id").eq("response_id", privResp.id);
+  check(
+    "resonances on a private piece's responses are hidden from anon",
+    pub.data?.length === 0,
+    `${pub.data?.length} rows`,
+  );
+}
+{
+  const { error } = await A.from("response_resonances").insert({
+    response_id: top.data.id,
+    user_id: aId,
+  });
+  check("A can resonate with a live response on a public piece", !error, error?.message);
+
+  const del = await B.from("responses").update({ is_deleted: true }).eq("id", reply.data.id).select("id");
+  check("B can soft-delete own response", !del.error && del.data?.length === 1, del.error?.message);
+  denied(
+    "A cannot resonate with a soft-deleted response",
+    await A.from("response_resonances").insert({ response_id: reply.data.id, user_id: aId }),
+  );
+}
+
+// Fixture perspectives cascade their reactions / responses / resonances.
+await admin.from("perspectives").delete().in("id", seeded);
+
 // --- Cleanup -------------------------------------------------------------------
 
 console.log("\nCleaning up...");

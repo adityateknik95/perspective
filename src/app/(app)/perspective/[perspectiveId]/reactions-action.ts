@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { setReactionSchema } from "@/lib/validation/social";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isPermissionDenied } from "@/lib/supabase/errors";
 import {
   fieldErrorsFromZod,
   type ActionResult,
@@ -53,9 +54,9 @@ export async function setReactionAction(values: {
     };
   }
 
-  // Make sure the perspective is reactable. RLS would hide drafts/private
-  // rows from non-authors anyway, but the explicit check produces a clean
-  // error message instead of a confusing FK / constraint failure.
+  // Make sure the perspective is reactable. The database enforces this
+  // itself (reactions_insert_self, 0008), but the explicit check produces a
+  // clean error message instead of a bare RLS rejection.
   //
   // We also pull the author's username and the film's tmdb_id so we can
   // revalidate /<username> and /film/<tmdbId> after the write — the card
@@ -102,6 +103,11 @@ export async function setReactionAction(values: {
         },
         { onConflict: "perspective_id,user_id" },
       );
+    // reactions_insert_self / _update_self (0008) re-check visibility, so a
+    // piece that went private since the lookup above lands here.
+    if (isPermissionDenied(error)) {
+      return { ok: false, error: "You can't react to this perspective." };
+    }
     if (error) return { ok: false, error: error.message };
   }
 
