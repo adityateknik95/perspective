@@ -1,7 +1,22 @@
-// Smoke-test the RLS + triggers + RPCs created by 0004_social.sql.
+// Prove the database's access rules by calling Supabase directly — as
+// anon, as user A, and as user B, with the public anon key — never through
+// a server action. If a check here passes, the rule holds even for someone
+// who skips the app entirely.
+//
+// Covers:
+//   0004  social RLS, notification triggers, summary RPC
+//   0006  perspective column grants (no direct body / is_draft / published_at
+//         writes), write-once published_at
+//   0007  private profiles hide their perspectives; profile_cards
+//   0008  reactions / responses / resonances need a visible target; reply
+//         parent must be same-perspective + top level; response column grants
+//   0009  get_feed_for_user uses auth.uid() only
 //
 // Usage:
 //   node --env-file=.env.local scripts/verify-social-rls.mjs
+//
+// Run it against a disposable project (or a local stack), never production:
+// it creates and deletes users.
 //
 // Required env:
 //   NEXT_PUBLIC_SUPABASE_URL
@@ -9,10 +24,10 @@
 //   SUPABASE_SERVICE_ROLE_KEY
 //
 // Creates two throwaway users (rlstesta_<ts>@perspective-test.local etc),
-// runs 14 checks against the social schema, then deletes them. Idempotent —
-// previous test users get cleaned up at the start. Test fixtures (the
-// throwaway film, perspective, reactions, follows, notifications) cascade
-// out when the test users are deleted.
+// runs every check, then deletes them. Idempotent — previous test users get
+// cleaned up at the start. Test fixtures (the throwaway film, perspectives,
+// reactions, responses, follows, notifications) cascade out when the test
+// users are deleted. Exits non-zero if any check fails.
 
 import { createClient } from "@supabase/supabase-js";
 
