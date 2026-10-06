@@ -108,7 +108,10 @@ export default async function ProfilePage({ params }: PageProps) {
         published={publicFeed.map((row) =>
           toCardData(row, authorPayload, summaries.get(row.id)),
         )}
-        ownerOnly={ownerOnly.map((row) => toCardData(row, authorPayload))}
+        ownerOnly={ownerOnly.map((row) => ({
+          card: toCardData(row, authorPayload),
+          label: ownerStatusLabel(row),
+        }))}
       />
     );
   }
@@ -137,6 +140,7 @@ type FeedRow = {
   updated_at: string;
   is_draft: boolean;
   is_private: boolean;
+  hidden_at: string | null;
   film:
     | { tmdb_id: number; title: string; year: number | null; poster_path: string | null }
     | { tmdb_id: number; title: string; year: number | null; poster_path: string | null }[]
@@ -150,11 +154,14 @@ async function fetchPublishedFeed(
   const { data, error } = await supabase
     .from("perspectives")
     .select(
-      "id, title, subtitle, body_plaintext, reading_time_minutes, lens_tags, published_at, updated_at, is_draft, is_private, film:films!inner(tmdb_id, title, year, poster_path)",
+      "id, title, subtitle, body_plaintext, reading_time_minutes, lens_tags, published_at, updated_at, is_draft, is_private, hidden_at, film:films!inner(tmdb_id, title, year, poster_path)",
     )
     .eq("user_id", userId)
     .eq("is_draft", false)
     .eq("is_private", false)
+    // Hidden pieces are already invisible to everyone else (RLS, 0012);
+    // for the owner they move to the owner-only section, flagged.
+    .is("hidden_at", null)
     .order("published_at", { ascending: false })
     .limit(FEED_LIMIT);
 
@@ -169,16 +176,16 @@ async function fetchOwnerOnlyFeed(
   supabase: ReturnType<typeof createClient>,
   userId: string,
 ): Promise<FeedRow[]> {
-  // Drafts and private-but-published pieces. Ordered by updated_at so a
+  // Drafts, private-but-published, and moderation-hidden pieces. Ordered by updated_at so a
   // half-edited draft floats to the top, which is what the author wants
   // when they come back.
   const { data, error } = await supabase
     .from("perspectives")
     .select(
-      "id, title, subtitle, body_plaintext, reading_time_minutes, lens_tags, published_at, updated_at, is_draft, is_private, film:films!inner(tmdb_id, title, year, poster_path)",
+      "id, title, subtitle, body_plaintext, reading_time_minutes, lens_tags, published_at, updated_at, is_draft, is_private, hidden_at, film:films!inner(tmdb_id, title, year, poster_path)",
     )
     .eq("user_id", userId)
-    .or("is_draft.eq.true,is_private.eq.true")
+    .or("is_draft.eq.true,is_private.eq.true,hidden_at.not.is.null")
     .order("updated_at", { ascending: false })
     .limit(FEED_LIMIT);
 
@@ -247,7 +254,7 @@ function ProfileView({
   followerCount: number;
   followingCount: number;
   published: PerspectiveCardData[];
-  ownerOnly: PerspectiveCardData[];
+  ownerOnly: Array<{ card: PerspectiveCardData; label: string }>;
 }) {
   const signInHref = `/login?next=${encodeURIComponent(`/${username}`)}`;
   return (
@@ -415,8 +422,8 @@ function ProfileView({
             Readers don&apos;t see this section.
           </p>
           <div className="mt-6">
-            {ownerOnly.map((card) => (
-              <OwnerOnlyCard key={card.id} card={card} />
+            {ownerOnly.map(({ card, label }) => (
+              <OwnerOnlyCard key={card.id} card={card} label={label} />
             ))}
           </div>
         </section>
@@ -425,13 +432,24 @@ function ProfileView({
   );
 }
 
-// Tiny wrapper around PerspectiveCard so draft/private rows get a status
-// badge. We don't want to clutter the shared card component with states
-// that only appear on one page.
-function OwnerOnlyCard({ card }: { card: PerspectiveCardData }) {
-  // The feed row has the is_draft/is_private flags; we smuggle them in via
-  // publishedAt === null (draft) or via publishedAt set (private-published).
-  const label = card.publishedAt ? "Private" : "Draft";
+// Status badge for the owner-only section. Draft wins (it isn't shared at
+// all), then moderation, then the author's own privacy choice.
+function ownerStatusLabel(row: FeedRow): string {
+  if (row.is_draft) return "Draft";
+  if (row.hidden_at) return "Hidden";
+  return "Private";
+}
+
+// Tiny wrapper around PerspectiveCard so draft/private/hidden rows get a
+// status badge. We don't want to clutter the shared card component with
+// states that only appear on one page.
+function OwnerOnlyCard({
+  card,
+  label,
+}: {
+  card: PerspectiveCardData;
+  label: string;
+}) {
 
   return (
     <div className="relative">

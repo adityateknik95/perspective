@@ -13,6 +13,7 @@
 //   0009  get_feed_for_user uses auth.uid() only
 //   0010  avatar_url not browser-writable and pinned to the owner's folder
 //   0011  deleting a user keeps other people's replies under their responses
+//   0012  reports need a visible target; hidden content; masked response bodies
 //
 // Usage:
 //   node --env-file=.env.local scripts/verify-social-rls.mjs
@@ -952,6 +953,120 @@ console.log("\n0011 account deletion...");
   );
 
   await admin.from("responses").delete().in("id", [cThreaded]);
+}
+
+// --- 0012: moderation ----------------------------------------------------------
+
+console.log("\n0012 moderation...");
+{
+  const draft = await seedPerspective({ is_draft: true });
+  const target = await seedPerspective({ is_draft: false, published_at: new Date().toISOString() });
+
+  // Reports -----------------------------------------------------------------
+  const report = (client, extra = {}) =>
+    client.from("reports").insert({
+      reporter_id: bId,
+      target_type: "perspective",
+      target_id: target,
+      reason: "spam",
+      ...extra,
+    });
+
+  {
+    const { error } = await report(B);
+    check("B can report a piece B can see", !error, error?.message);
+  }
+  {
+    const { error } = await report(B);
+    check("a second report of the same target by B is rejected (unique)", error?.code === "23505", error?.code);
+  }
+  denied("B cannot report A's draft (can't see it)", await report(B, { target_id: draft }));
+  denied(
+    "B cannot file a report pre-dismissed (status not insertable)",
+    await report(B, { target_id: perspectiveId, status: "dismissed" }),
+  );
+
+  // Hiding a perspective ----------------------------------------------------
+  await admin.from("perspectives").update({ hidden_at: new Date().toISOString() }).eq("id", target);
+
+  for (const [who, client] of [["anon", anon], ["B", B]]) {
+    const { data } = await client.from("perspectives").select("id").eq("id", target);
+    check(`${who} cannot SELECT a hidden perspective`, data?.length === 0, `${data?.length} rows`);
+  }
+  {
+    const { data } = await A.from("perspectives").select("id, hidden_at").eq("id", target);
+    check("author A still sees own hidden perspective, flagged", data?.length === 1 && !!data[0].hidden_at);
+  }
+  denied(
+    "B cannot react to a hidden perspective",
+    await B.from("reactions").insert({ user_id: bId, perspective_id: target, reaction_type: "moved" }),
+  );
+  denied(
+    "A cannot unhide own perspective",
+    await A.from("perspectives").update({ hidden_at: null }).eq("id", target).select("id"),
+  );
+
+  // Response bodies -----------------------------------------------------------
+  const mk = async (userId, body, extra = {}) => {
+    const { data, error } = await admin
+      .from("responses")
+      .insert({ perspective_id: perspectiveId, user_id: userId, body, body_plaintext: body, ...extra })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return data.id;
+  };
+  const live = await mk(bId, "live words");
+  const deleted = await mk(bId, "words B deleted", { is_deleted: true });
+  const hiddenResp = await mk(bId, "words a moderator hid", { hidden_at: new Date().toISOString() });
+
+  denied(
+    "anon cannot SELECT response bodies directly",
+    await anon.from("responses").select("id, body").eq("id", deleted),
+  );
+  {
+    const { data, error } = await anon
+      .from("responses")
+      .select("id", { count: "exact", head: true })
+      .eq("perspective_id", perspectiveId);
+    check("anon can still count responses (no body columns)", !error, error?.message);
+  }
+
+  const thread = async (client) => {
+    const { data, error } = await client.rpc("get_response_thread", { p_perspective_id: perspectiveId });
+    if (error) throw error;
+    return Object.fromEntries(data.map((r) => [r.id, r]));
+  };
+  const asAnon = await thread(anon);
+  const asA = await thread(A);
+  const asB = await thread(B);
+
+  check("thread: a live response has its body", asAnon[live]?.body === "live words");
+  check(
+    "thread: a deleted response keeps its slot but has no body or author",
+    !!asAnon[deleted] && asAnon[deleted].body === null && asAnon[deleted].author_id === null,
+    JSON.stringify(asAnon[deleted]),
+  );
+  check(
+    "thread: a hidden response has no body for readers (anon, A)",
+    asAnon[hiddenResp]?.body === null && asA[hiddenResp]?.body === null && asA[hiddenResp]?.is_hidden === true,
+  );
+  check(
+    "thread: the hidden response's author B still sees the body",
+    asB[hiddenResp]?.body === "words a moderator hid" && asB[hiddenResp]?.is_hidden === true,
+  );
+  denied(
+    "B cannot unhide own response",
+    await B.from("responses").update({ hidden_at: null }).eq("id", hiddenResp).select("id"),
+  );
+  {
+    const { data } = await anon.rpc("get_response_thread", { p_perspective_id: target });
+    check("thread RPC returns nothing for a hidden perspective", (data ?? []).length === 0, `${data?.length}`);
+  }
+
+  await admin.from("responses").delete().in("id", [live, deleted, hiddenResp]);
+  await admin.from("perspectives").delete().in("id", [draft, target]);
+  await admin.from("reports").delete().eq("reporter_id", bId);
 }
 
 // --- Cleanup -------------------------------------------------------------------

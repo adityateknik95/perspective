@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Heart, MessageCircle, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { ResponseComposer } from "./response-composer";
+import { ReportButton } from "@/components/moderation/report-button";
 import {
   toggleResonanceAction,
   deleteResponseAction,
@@ -27,8 +28,10 @@ interface ResponseItemProps {
 
 // One row in the thread. Top-level rows can be replied to (toggles an
 // inline composer) and may have nested children rendered underneath.
-// Soft-deleted rows render as "[removed]" with the body and controls
-// stripped, but their structural slot is preserved so replies line up.
+// Removed rows — deleted by their author, or hidden by moderation for
+// anyone but the author — render as a placeholder with the body and
+// controls stripped, but their structural slot is preserved so replies
+// line up. (The server never sends a removed row's body; see 0012.)
 //
 // The viewer's resonance is tracked optimistically — clicking flips the
 // pill before the server confirms; the action settles the count on next
@@ -61,7 +64,11 @@ export function ResponseItem({
   );
 
   const isOwn = !!viewerId && response.author.id === viewerId;
-  const isDeleted = response.is_deleted;
+  const isHiddenFromViewer = response.is_hidden && !isOwn;
+  // `isDeleted` gates every control below; a response hidden from this
+  // viewer behaves exactly like a deleted one.
+  const isDeleted = response.is_deleted || isHiddenFromViewer;
+  const removedLabel = isHiddenFromViewer ? "Removed by moderation" : "Removed";
 
   function onResonate() {
     if (!viewerId) {
@@ -108,7 +115,7 @@ export function ResponseItem({
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           {isDeleted ? (
             <span className="font-mono text-meta-sm uppercase text-ink-muted">
-              Removed
+              {removedLabel}
             </span>
           ) : (
             <>
@@ -146,8 +153,14 @@ export function ResponseItem({
             isDeleted ? "italic text-ink-muted" : "text-ink-soft",
           )}
         >
-          {isDeleted ? "[removed]" : response.body_plaintext}
+          {isDeleted ? `[${removedLabel.toLowerCase()}]` : response.body_plaintext}
         </p>
+
+        {isOwn && response.is_hidden && (
+          <p className="mt-2 border-l-2 border-wine pl-3 font-mono text-meta-sm uppercase text-wine">
+            Hidden by moderation — only you can see this.
+          </p>
+        )}
 
         {!isDeleted && (
           <div className="mt-3 flex flex-wrap items-center gap-1">
@@ -192,6 +205,16 @@ export function ResponseItem({
                 <MessageCircle size={14} strokeWidth={1.75} aria-hidden />
                 <span>Reply</span>
               </button>
+            )}
+
+            {!isOwn && (
+              <ReportButton
+                targetType="response"
+                targetId={response.id}
+                isSignedIn={!!viewerId}
+                signInHref={signInHref}
+                className="ml-auto"
+              />
             )}
 
             {isOwn && (
