@@ -9,6 +9,7 @@ import { FilmPoster } from "@/components/film-poster";
 import { PerspectiveCard, type PerspectiveCardData } from "@/components/perspective-card";
 import { buttonClassName } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { WriteFirst } from "@/components/empty/write-first";
 import { yearInWords } from "@/lib/year-in-words";
 import { excerpt as makeExcerpt } from "@/lib/reading";
 import { isLens, LENSES, type Lens } from "@/lib/lenses";
@@ -304,18 +305,20 @@ export default async function FilmPage({ params, searchParams }: PageProps) {
                   : `The first piece on ${film.title} sets the tone for everyone after.`
               }
               action={
-                activeLens ? (
-                  <Link
-                    href={`/film/${film.tmdb_id}`}
-                    className={buttonClassName("secondary", "sm")}
-                  >
-                    See all lenses
-                  </Link>
-                ) : (
-                  <Link href={writeHref} className={buttonClassName("primary", "sm")}>
-                    Write the first
-                  </Link>
-                )
+                <WriteFirst
+                  seed={`film-${film.tmdb_id}-${activeLens ?? "all"}`}
+                  writeHref={writeHref}
+                  writeLabel={
+                    activeLens
+                      ? `Write about it through ${activeLens}`
+                      : "Write the first perspective"
+                  }
+                  secondary={
+                    activeLens
+                      ? { href: `/film/${film.tmdb_id}`, label: "See all lenses" }
+                      : undefined
+                  }
+                />
               }
             />
           ) : (

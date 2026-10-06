@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { isLens } from "@/lib/lenses";
 import { excerpt as makeExcerpt } from "@/lib/reading";
@@ -7,7 +6,7 @@ import {
   type PerspectiveCardData,
 } from "@/components/perspective-card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { buttonClassName } from "@/components/ui/button";
+import { WriteFirst } from "@/components/empty/write-first";
 import { getReactionSummariesFor } from "@/lib/social/queries";
 
 interface FollowingTabProps {
@@ -41,20 +40,20 @@ export async function FollowingTab({ viewerId }: FollowingTabProps) {
 
   const followedIds = (follows ?? []).map((f) => f.following_id);
 
-  // Empty-state path. New accounts won't have follows yet — gently nudge
-  // toward film discovery as the path to finding writers.
+  // Empty-state path. New accounts won't have follows yet. Two ways in:
+  // find writers to follow, or write the first piece yourself (which is
+  // also how other people find *you*).
   if (followedIds.length === 0) {
     return (
       <EmptyState
-        title="No one to follow yet."
-        body="Browse a film and you'll see who's written about it. Follow a few writers whose perspectives you want in your week."
+        title="Your feed starts with a few writers."
+        body="Follow people whose perspectives you want in your week, and their new pieces show up here."
         action={
-          <Link
-            href="/home"
-            className={buttonClassName("primary", "sm")}
-          >
-            Browse films
-          </Link>
+          <WriteFirst
+            seed={`following-empty-${viewerId}`}
+            writeLabel="Write your first perspective"
+            secondary={{ href: "/search", label: "Find writers" }}
+          />
         }
       />
     );
@@ -92,6 +91,12 @@ export async function FollowingTab({ viewerId }: FollowingTabProps) {
       <EmptyState
         title="Quiet week from your follows."
         body="No one you follow has shared a perspective recently. The feed will fill in as they do."
+        action={
+          <WriteFirst
+            seed={`following-quiet-${viewerId}`}
+            secondary={{ href: "/search", label: "Find more writers" }}
+          />
+        }
       />
     );
   }

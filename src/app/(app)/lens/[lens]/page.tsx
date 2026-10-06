@@ -8,6 +8,7 @@ import {
   type PerspectiveCardData,
 } from "@/components/perspective-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { WriteFirst } from "@/components/empty/write-first";
 import { buttonClassName } from "@/components/ui/button";
 import { excerpt as makeExcerpt } from "@/lib/reading";
 import { getReactionSummariesFor } from "@/lib/social/queries";
@@ -188,9 +189,10 @@ export default async function LensPage({ params, searchParams }: PageProps) {
           title="Nothing here yet."
           body={`No one has filed a perspective under ${lens} yet. The first one sets the tone.`}
           action={
-            <Link href="/write/new" className={buttonClassName("primary", "sm")}>
-              Write the first
-            </Link>
+            <WriteFirst
+              seed={`lens-${lens}`}
+              writeLabel={`Write the first on ${lens}`}
+            />
           }
         />
       ) : (
