@@ -203,6 +203,12 @@ export function LandingPage() {
             >
               Design system
             </Link>
+            <Link href="/terms" className="text-ink-soft underline-offset-4 hover:text-ink hover:underline">
+              Terms
+            </Link>
+            <Link href="/privacy" className="text-ink-soft underline-offset-4 hover:text-ink hover:underline">
+              Privacy
+            </Link>
           </div>
           <div className="mx-auto max-w-6xl px-4 pb-8 sm:px-6">
             <TmdbAttribution />
