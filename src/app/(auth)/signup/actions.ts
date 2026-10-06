@@ -3,6 +3,13 @@
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { signupSchema } from "@/lib/validation/auth";
+import { checkRateLimit, rateLimitMessage } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/request-ip";
+
+// Every signup sends a verification email from our Supabase project, and
+// Supabase rate-limits outbound auth email per project — a script hammering
+// signup would block real users' verification mail. Per IP, per hour.
+const RATE_SIGNUP = { max: 5, windowMs: 60 * 60_000 };
 import {
   fieldErrorsFromZod,
   type ActionResult,
@@ -24,6 +31,12 @@ export async function signupAction(
       fieldErrors: fieldErrorsFromZod(parsed.error),
     };
   }
+
+  const limit = await checkRateLimit(
+    `signup:ip:${clientIp(headers())}`,
+    RATE_SIGNUP,
+  );
+  if (!limit.ok) return { ok: false, error: rateLimitMessage(limit) };
 
   const supabase = createClient();
   const origin =
