@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    // Enables src/instrumentation.ts, which validates env vars at server
+    // boot (src/lib/env.ts). Stable in Next 15; opt-in on 14.
+    instrumentationHook: true,
+  },
   images: {
     // Avatars are served from the Supabase Storage CDN. Project-specific
     // hostnames look like <project-ref>.supabase.co.
