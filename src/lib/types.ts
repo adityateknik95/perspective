@@ -105,7 +105,7 @@ export interface Database {
           id?: string;
           user_id: string;
           film_id: string;
-          title: string;
+          title?: string;
           subtitle?: string | null;
           body?: string;
           body_plaintext?: string;

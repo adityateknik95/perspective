@@ -11,14 +11,17 @@ import {
 } from "@/lib/validation/perspective";
 import { sanitizeBodyHtml, htmlToPlaintext } from "@/lib/sanitize-html";
 import { wordCount, readingTimeMinutes } from "@/lib/reading";
+import { writePerspective } from "@/lib/perspectives/writer";
 import {
   fieldErrorsFromZod,
   type ActionResult,
 } from "@/lib/action-result";
 
-// Every mutation here runs under the authenticated Supabase client. RLS is
-// the last line of defence — but we still check ownership manually before
-// querying so we can surface clean error messages instead of PGRST silence.
+// Ownership is checked under the authenticated Supabase client so RLS stays
+// the last line of defence and we can surface clean error messages instead
+// of PGRST silence. Writes to server-derived columns (body, word counts,
+// draft/published state) then go through writePerspective — the browser
+// role can't write those columns at all since 0006.
 
 async function getOwnedPerspective(id: string) {
   const supabase = createClient();
@@ -79,19 +82,20 @@ export async function saveDraftAction(
       ? parsed.data.subtitle.trim()
       : null;
 
-  const { error } = await owner.supabase
-    .from("perspectives")
-    .update({
+  const write = await writePerspective(
+    id,
+    owner.user.id,
+    {
       title: parsed.data.title ?? "",
       subtitle: subtitleValue,
       body: bodyHtml,
       body_plaintext: bodyPlaintext,
       word_count: wordCount(bodyPlaintext),
       reading_time_minutes: readingTimeMinutes(bodyPlaintext),
-    })
-    .eq("id", id);
-
-  if (error) return { ok: false, error: error.message };
+    },
+    { onlyIfDraft: true },
+  );
+  if (!write.ok) return write;
 
   return { ok: true, data: { savedAt: new Date().toISOString() } };
 }
@@ -134,23 +138,19 @@ export async function publishAction(
   const nextPublishedAt =
     owner.perspective.published_at ?? new Date().toISOString();
 
-  const { error } = await owner.supabase
-    .from("perspectives")
-    .update({
-      title: parsed.data.title,
-      subtitle: subtitleValue,
-      body: bodyHtml,
-      body_plaintext: bodyPlaintext,
-      word_count: wordCount(bodyPlaintext),
-      reading_time_minutes: readingTimeMinutes(bodyPlaintext),
-      lens_tags: lenses,
-      is_private: parsed.data.is_private,
-      is_draft: false,
-      published_at: nextPublishedAt,
-    })
-    .eq("id", id);
-
-  if (error) return { ok: false, error: error.message };
+  const write = await writePerspective(id, owner.user.id, {
+    title: parsed.data.title,
+    subtitle: subtitleValue,
+    body: bodyHtml,
+    body_plaintext: bodyPlaintext,
+    word_count: wordCount(bodyPlaintext),
+    reading_time_minutes: readingTimeMinutes(bodyPlaintext),
+    lens_tags: lenses,
+    is_private: parsed.data.is_private,
+    is_draft: false,
+    published_at: nextPublishedAt,
+  });
+  if (!write.ok) return write;
 
   // Bust caches for pages that list this perspective. The profile page and
   // film page both render server-side from `perspectives`.
@@ -173,12 +173,8 @@ export async function revertToDraftAction(
     return { ok: true, data: { id } };
   }
 
-  const { error } = await owner.supabase
-    .from("perspectives")
-    .update({ is_draft: true })
-    .eq("id", id);
-
-  if (error) return { ok: false, error: error.message };
+  const write = await writePerspective(id, owner.user.id, { is_draft: true });
+  if (!write.ok) return write;
 
   revalidatePath(`/perspective/${id}`);
   return { ok: true, data: { id } };
