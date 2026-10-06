@@ -35,6 +35,13 @@ const anon = createClient(URL, ANON, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+// Sign-ins go through their own client. signInWithPassword stores the
+// session on the client it's called on, so signing in through `anon` would
+// silently turn every later "anon" check into a check as the last user.
+const signer = createClient(URL, ANON, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
+
 function asUser(jwt) {
   return createClient(URL, ANON, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -120,7 +127,7 @@ console.log(`  B: ${bId}  (${bUsername})`);
 }
 
 console.log("Signing in to mint JWTs...");
-const { data: aSess, error: aSessErr } = await anon.auth.signInWithPassword({
+const { data: aSess, error: aSessErr } = await signer.auth.signInWithPassword({
   email: aEmail,
   password,
 });
@@ -128,7 +135,7 @@ if (aSessErr) {
   console.error("signIn A failed:", aSessErr);
   process.exit(1);
 }
-const { data: bSess, error: bSessErr } = await anon.auth.signInWithPassword({
+const { data: bSess, error: bSessErr } = await signer.auth.signInWithPassword({
   email: bEmail,
   password,
 });
