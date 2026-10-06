@@ -217,7 +217,8 @@ export interface Database {
         Row: {
           id: string;
           perspective_id: string;
-          user_id: string;
+          // NULL once the author deleted their account (0011).
+          user_id: string | null;
           parent_response_id: string | null;
           body: string;
           body_plaintext: string;

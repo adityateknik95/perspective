@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Lens } from "@/lib/lenses";
 import { isLens } from "@/lib/lenses";
 import { SettingsForm } from "./settings-form";
+import { DeleteAccountSection } from "./delete-account-section";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -53,6 +54,7 @@ export default async function SettingsPage() {
           avatar_url: profile.avatar_url,
         }}
       />
+      <DeleteAccountSection username={profile.username} />
     </div>
   );
 }

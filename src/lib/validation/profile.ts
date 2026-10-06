@@ -51,3 +51,15 @@ export const settingsSchema = z.object({
   is_private: z.boolean(),
 });
 export type SettingsInput = z.infer<typeof settingsSchema>;
+
+// Account deletion. The user types their username to confirm. The schema
+// only checks that something was typed; the server compares it with the
+// signed-in user's actual username (case-insensitively, like usernames).
+export const deleteAccountSchema = z.object({
+  confirmation: z.string().trim().min(1, "Type your username to confirm."),
+});
+export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;
+
+export function confirmsUsername(confirmation: string, username: string): boolean {
+  return confirmation.trim().toLowerCase() === username.toLowerCase();
+}

@@ -129,11 +129,13 @@ export async function getResponseThread(
 ): Promise<ResponseNode[]> {
   // Authors come from profile_cards, not profiles: a private profile's row
   // is hidden by RLS, but their responses on public pieces still need a
-  // name and avatar (0007_profile_privacy.sql).
+  // name and avatar (0007_profile_privacy.sql). Not !inner: a response
+  // detached from a deleted account (0011) has no author and must still
+  // hold its place in the thread, rendered as "Removed".
   const { data: rows, error } = await supabase
     .from("responses")
     .select(
-      "id, perspective_id, user_id, parent_response_id, body, body_plaintext, is_deleted, created_at, updated_at, author:profile_cards!responses_user_id_fkey!inner(id, username, display_name, avatar_url)",
+      "id, perspective_id, user_id, parent_response_id, body, body_plaintext, is_deleted, created_at, updated_at, author:profile_cards!responses_user_id_fkey(id, username, display_name, avatar_url)",
     )
     .eq("perspective_id", perspectiveId)
     .order("created_at", { ascending: true });

@@ -12,6 +12,7 @@
 //         parent must be same-perspective + top level; response column grants
 //   0009  get_feed_for_user uses auth.uid() only
 //   0010  avatar_url not browser-writable and pinned to the owner's folder
+//   0011  deleting a user keeps other people's replies under their responses
 //
 // Usage:
 //   node --env-file=.env.local scripts/verify-social-rls.mjs
@@ -873,6 +874,84 @@ console.log("\n0010 avatar guards...");
     good.error?.message,
   );
   await admin.from("profiles").update({ avatar_url: null }).eq("id", aId);
+}
+
+// --- 0011: account deletion keeps other people's replies -------------------
+
+console.log("\n0011 account deletion...");
+{
+  // C is a third, throwaway user who gets deleted for real through GoTrue's
+  // admin API (the same call the delete-account action makes).
+  const cEmail = `rlstestc_${ts}@perspective-test.local`;
+  const { data: cUser, error: cErr } = await admin.auth.admin.createUser({
+    email: cEmail,
+    password,
+    email_confirm: true,
+    user_metadata: { username: `rlstestc${ts}`.slice(0, 20) },
+  });
+  if (cErr) throw cErr;
+  const cId = cUser.user.id;
+
+  const insertResponse = async (userId, parent, body) => {
+    const { data, error } = await admin
+      .from("responses")
+      .insert({
+        perspective_id: perspectiveId,
+        user_id: userId,
+        parent_response_id: parent,
+        body,
+        body_plaintext: body,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return data.id;
+  };
+
+  const cThreaded = await insertResponse(cId, null, "C's response with replies");
+  const bReply = await insertResponse(bId, cThreaded, "B replies to C");
+  const cSelfReply = await insertResponse(cId, cThreaded, "C replies to own thread");
+  const cLonely = await insertResponse(cId, null, "C's response nobody answered");
+  const cPiece = await admin
+    .from("perspectives")
+    .insert({ user_id: cId, film_id: film.id })
+    .select("id")
+    .single();
+
+  const { error: delErr } = await admin.auth.admin.deleteUser(cId);
+  check("C can be deleted through the auth admin API", !delErr, delErr?.message);
+
+  const { data: left } = await admin
+    .from("responses")
+    .select("id, user_id, body, is_deleted")
+    .in("id", [cThreaded, bReply, cSelfReply, cLonely]);
+  const byId = Object.fromEntries((left ?? []).map((r) => [r.id, r]));
+
+  check("B's reply under C's response survives", !!byId[bReply]);
+  check(
+    "C's threaded response is detached and scrubbed, not deleted",
+    byId[cThreaded]?.user_id === null &&
+      byId[cThreaded]?.body === "[deleted]" &&
+      byId[cThreaded]?.is_deleted === true,
+    JSON.stringify(byId[cThreaded]),
+  );
+  check("C's own reply is deleted", !byId[cSelfReply]);
+  check("C's unanswered response is deleted", !byId[cLonely]);
+
+  const { data: pieces } = await admin.from("perspectives").select("id").eq("id", cPiece.data.id);
+  check("C's perspectives are deleted", pieces?.length === 0);
+
+  const { data: thread } = await anon
+    .from("responses")
+    .select("id, author:profile_cards!responses_user_id_fkey(username)")
+    .eq("id", cThreaded);
+  check(
+    "readers still see the detached response (as an author-less row)",
+    thread?.length === 1 && thread[0].author === null,
+    JSON.stringify(thread),
+  );
+
+  await admin.from("responses").delete().in("id", [cThreaded]);
 }
 
 // --- Cleanup -------------------------------------------------------------------
