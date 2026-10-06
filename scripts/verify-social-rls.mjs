@@ -423,7 +423,6 @@ console.log("\nRunning RLS smoke test...");
   await B.from("follows").insert({ follower_id: bId, following_id: aId });
 
   const { data, error } = await B.rpc("get_feed_for_user", {
-    p_user_id: bId,
     p_cursor_published_at: null,
     p_cursor_id: null,
     p_page_size: 20,
@@ -794,6 +793,25 @@ denied(
 
 // Fixture perspectives cascade their reactions / responses / resonances.
 await admin.from("perspectives").delete().in("id", seeded);
+
+// --- 0009: feed reads the caller from the JWT --------------------------------
+
+console.log("\n0009 feed RPC...");
+{
+  // A follows B (from check 8) and B has no pieces; B follows A. If A could
+  // pass B's id, A would get B's feed — A's own piece.
+  const { error } = await A.rpc("get_feed_for_user", { p_user_id: bId });
+  denied("A cannot ask for B's feed by passing p_user_id", { error });
+
+  const { data } = await A.rpc("get_feed_for_user", {});
+  check(
+    "A's own feed does not contain B's feed (A's own piece)",
+    Array.isArray(data) && !data.some((r) => r.id === perspectiveId),
+    `${data?.length} rows`,
+  );
+
+  denied("anon cannot call get_feed_for_user", await anon.rpc("get_feed_for_user", {}));
+}
 
 // --- Cleanup -------------------------------------------------------------------
 

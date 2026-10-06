@@ -480,9 +480,9 @@ export interface Database {
           total: number;
         }>;
       };
+      // 0009: the viewer comes from auth.uid(); there is no user-id arg.
       get_feed_for_user: {
         Args: {
-          p_user_id: string;
           p_cursor_published_at?: string | null;
           p_cursor_id?: string | null;
           p_page_size?: number;
