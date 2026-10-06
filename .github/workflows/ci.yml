@@ -67,3 +67,74 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  # End-to-end tests (e2e/, Playwright) against a disposable Supabase
+  # project. Behind secrets so CI stays green without them — forks and
+  # repos that haven't set them up get a notice and a skipped run instead
+  # of a failure. To enable, add repository secrets:
+  #   E2E_SUPABASE_URL, E2E_SUPABASE_ANON_KEY, E2E_SUPABASE_SERVICE_ROLE_KEY
+  # for a project with all migrations applied and "Confirm email" turned off
+  # (Supabase's built-in mailer won't deliver to test addresses). Never
+  # point these at production: the suite creates and deletes users.
+  e2e:
+    name: e2e (Playwright)
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3100
+      # Env validation requires a value; the e2e flow never calls TMDB.
+      TMDB_ACCESS_TOKEN: e2e-unused
+
+    steps:
+      - name: Skip without e2e secrets
+        if: env.E2E_SUPABASE_URL == ''
+        run: echo "::notice::E2E_SUPABASE_* secrets are not set — skipping end-to-end tests."
+
+      - name: Checkout
+        if: env.E2E_SUPABASE_URL != ''
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        if: env.E2E_SUPABASE_URL != ''
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Set up Node
+        if: env.E2E_SUPABASE_URL != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        if: env.E2E_SUPABASE_URL != ''
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        if: env.E2E_SUPABASE_URL != ''
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build
+        if: env.E2E_SUPABASE_URL != ''
+        run: pnpm build
+
+      - name: Run end-to-end tests
+        if: env.E2E_SUPABASE_URL != ''
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: failure() && env.E2E_SUPABASE_URL != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
