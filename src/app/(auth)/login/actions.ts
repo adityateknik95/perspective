@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loginSchema } from "@/lib/validation/auth";
+import { safeNextPath } from "@/lib/safe-redirect";
 import {
   fieldErrorsFromZod,
   type ActionResult,
@@ -36,14 +37,10 @@ export async function loginAction(
 
   // If the user arrived at /login from a protected route, honour that
   // destination. Otherwise pick a sensible default based on onboarding state.
-  const rawNext = formData.get("next");
-  const explicitNext =
-    typeof rawNext === "string" &&
-    rawNext.startsWith("/") &&
-    !rawNext.startsWith("//") &&
-    rawNext !== "/"
-      ? rawNext
-      : null;
+  // "/" counts as no preference, so it falls through to the onboarding-
+  // aware default below.
+  const safeNext = safeNextPath(formData.get("next"));
+  const explicitNext = safeNext && safeNext !== "/" ? safeNext : null;
 
   if (explicitNext) redirect(explicitNext);
 

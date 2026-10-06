@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { safeNextPath } from "@/lib/safe-redirect";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginInput } from "@/lib/validation/auth";
@@ -18,7 +19,9 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ next, oauthError }: LoginFormProps) {
-  const nextUrl = next && next.startsWith("/") ? next : "/";
+  // Validated here too (not just in the action / callback) because this
+  // value is forwarded into the Google OAuth redirect.
+  const nextUrl = safeNextPath(next) ?? "/";
   const [isPending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(
     oauthError ? "Sign-in failed. Try again." : null,
