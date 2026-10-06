@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { cn } from "@/lib/cn";
+import { isTrustedAvatarUrl } from "@/lib/avatar-url";
 
 interface AvatarProps {
   src?: string | null;
@@ -20,6 +21,9 @@ export function Avatar({
   className,
 }: AvatarProps) {
   const initials = (fallback ?? "").trim().slice(0, 2).toUpperCase();
+  // Rendered unoptimized (no next/image host allowlist), so only our own
+  // bucket's URLs are trusted; anything else falls back to initials.
+  const safeSrc = isTrustedAvatarUrl(src) ? src : null;
 
   return (
     <span
@@ -30,9 +34,9 @@ export function Avatar({
       style={{ width: size, height: size, fontSize: Math.max(10, size * 0.32) }}
       aria-hidden={!alt ? true : undefined}
     >
-      {src ? (
+      {safeSrc ? (
         <Image
-          src={src}
+          src={safeSrc}
           alt={alt}
           width={size}
           height={size}

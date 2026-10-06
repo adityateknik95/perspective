@@ -11,6 +11,7 @@
 //   0008  reactions / responses / resonances need a visible target; reply
 //         parent must be same-perspective + top level; response column grants
 //   0009  get_feed_for_user uses auth.uid() only
+//   0010  avatar_url not browser-writable and pinned to the owner's folder
 //
 // Usage:
 //   node --env-file=.env.local scripts/verify-social-rls.mjs
@@ -826,6 +827,52 @@ console.log("\n0009 feed RPC...");
   );
 
   denied("anon cannot call get_feed_for_user", await anon.rpc("get_feed_for_user", {}));
+}
+
+// --- 0010: avatar guards -----------------------------------------------------
+
+console.log("\n0010 avatar guards...");
+{
+  const base = `${URL}/storage/v1/object/public/avatars`;
+
+  denied(
+    "A cannot write avatar_url directly (tracking-pixel URL)",
+    await A.from("profiles")
+      .update({ avatar_url: "https://tracker.example/pixel.gif" })
+      .eq("id", aId)
+      .select("id"),
+  );
+
+  const own = await A.from("profiles")
+    .update({ display_name: "RLS Test A (renamed)", bio: "still editable", is_private: false })
+    .eq("id", aId)
+    .select("id");
+  check(
+    "A can still edit display_name / bio / is_private",
+    !own.error && own.data?.length === 1,
+    own.error?.message,
+  );
+
+  denied(
+    "even the service role can't store an off-site avatar_url (CHECK)",
+    await admin.from("profiles").update({ avatar_url: "https://tracker.example/pixel.gif" }).eq("id", aId),
+  );
+  denied(
+    "even the service role can't point A's avatar into B's folder (CHECK)",
+    await admin.from("profiles").update({ avatar_url: `${base}/${bId}/1.png` }).eq("id", aId),
+  );
+
+  const good = await admin
+    .from("profiles")
+    .update({ avatar_url: `${base}/${aId}/1700000000.png` })
+    .eq("id", aId)
+    .select("avatar_url");
+  check(
+    "service role (the upload action) can set A's avatar to A's own folder",
+    !good.error && good.data?.length === 1,
+    good.error?.message,
+  );
+  await admin.from("profiles").update({ avatar_url: null }).eq("id", aId);
 }
 
 // --- Cleanup -------------------------------------------------------------------
