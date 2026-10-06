@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { Logo } from "@/components/ui/logo";
+import { TmdbAttribution } from "@/components/tmdb/tmdb-attribution";
 import { buttonClassName } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { LENSES } from "@/lib/lenses";
@@ -202,6 +203,9 @@ export function LandingPage() {
             >
               Design system
             </Link>
+          </div>
+          <div className="mx-auto max-w-6xl px-4 pb-8 sm:px-6">
+            <TmdbAttribution />
           </div>
         </footer>
       </div>
