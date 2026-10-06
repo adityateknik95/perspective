@@ -4,6 +4,10 @@ import { ThemeScript } from "@/components/theme/theme-script";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  // Absolute base for og:image, canonical and sitemap URLs. Falls back to
+  // localhost only so `next build` works without the variable; at runtime
+  // env validation requires it.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: {
     default: "Perspective",
     template: "%s · Perspective",
