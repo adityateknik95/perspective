@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import {
   TMDB_LOGO_HEIGHT_PX,
@@ -22,6 +22,15 @@ interface TmdbAttributionProps {
 // showing a broken image or a home-made imitation of TMDB's mark.
 export function TmdbAttribution({ variant = "footer", className }: TmdbAttributionProps) {
   const [logoOk, setLogoOk] = useState(true);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // onError alone misses failures that happen before hydration (the <img>
+  // is in the server HTML, so the browser can give up on it before React
+  // attaches the handler). Check once after mount as well.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth === 0) setLogoOk(false);
+  }, []);
 
   return (
     <div
@@ -34,6 +43,7 @@ export function TmdbAttribution({ variant = "footer", className }: TmdbAttributi
         <a href={TMDB_URL} target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element -- static SVG from /public; next/image adds nothing here */}
           <img
+            ref={imgRef}
             src={TMDB_LOGO_PATH}
             alt="TMDB"
             height={TMDB_LOGO_HEIGHT_PX}
